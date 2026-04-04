@@ -1,15 +1,30 @@
 import { addEnsContracts } from '@ensdomains/ensjs';
-import { createSubname, setRecords, setResolver } from '@ensdomains/ensjs/wallet';
-import { createPublicClient, createWalletClient, type Hash, http } from 'viem';
+import { setRecords } from '@ensdomains/ensjs/wallet';
+import { createPublicClient, createWalletClient, type Hash, http, labelhash, namehash } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
 
 const PARENT_DOMAIN = 'twinmarket.eth';
 const SEPOLIA_PUBLIC_RESOLVER = '0xE99638b40E4Fff0129D56f03b55b6bbC4BBE49b5' as const;
+const ENS_REGISTRY = '0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e' as const;
 
-type AgentRecordsParams = {
-  ensName: string;
-  ownerAddress: `0x${string}`;
+const ensRegistryAbi = [
+  {
+    name: 'setSubnodeRecord',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'node', type: 'bytes32' },
+      { name: 'label', type: 'bytes32' },
+      { name: 'owner', type: 'address' },
+      { name: 'resolver', type: 'address' },
+      { name: 'ttl', type: 'uint64' },
+    ],
+    outputs: [],
+  },
+] as const;
+
+type AgentRecordsMetadata = {
   description: string;
   url: string;
   avatar: string;
@@ -44,26 +59,25 @@ function getPublicClient() {
 export async function registerEnsName(
   slug: string,
   agentAddress: `0x${string}`,
-  metadata: Omit<AgentRecordsParams, 'ensName' | 'ownerAddress'>,
+  metadata: AgentRecordsMetadata,
 ): Promise<{ ensName: string; txHashes: Hash[] }> {
   const wallet = getEnsOwnerClient();
   const publicClient = getPublicClient();
   const ensName = `${slug}.${PARENT_DOMAIN}`;
 
-  // Send all 3 txs sequentially but don't wait for receipts between them.
-  // Viem auto-increments nonces so they're mined in order.
-  const subnameTxHash = await createSubname(wallet, {
-    name: ensName,
-    owner: wallet.account.address,
-    contract: 'registry',
-  });
+  // 1. Create subname + set resolver in ONE tx via setSubnodeRecord
+  const parentNode = namehash(PARENT_DOMAIN);
+  const label = labelhash(slug);
 
-  const resolverTxHash = await setResolver(wallet, {
-    name: ensName,
-    contract: 'registry',
-    resolverAddress: SEPOLIA_PUBLIC_RESOLVER,
+  const createTxHash = await wallet.writeContract({
+    address: ENS_REGISTRY,
+    abi: ensRegistryAbi,
+    functionName: 'setSubnodeRecord',
+    args: [parentNode, label, wallet.account.address, SEPOLIA_PUBLIC_RESOLVER, BigInt(0)],
   });
+  await publicClient.waitForTransactionReceipt({ hash: createTxHash });
 
+  // 2. Set text records + address (resolver is already set)
   const recordsTxHash = await setRecords(wallet, {
     name: ensName,
     resolverAddress: SEPOLIA_PUBLIC_RESOLVER,
@@ -76,12 +90,10 @@ export async function registerEnsName(
       { key: 'world.agentbook_id', value: metadata.worldAgentbookId },
     ],
   });
-
-  // Wait only for the last tx — all previous txs are guaranteed mined by then
   await publicClient.waitForTransactionReceipt({ hash: recordsTxHash });
 
   return {
     ensName,
-    txHashes: [subnameTxHash, resolverTxHash, recordsTxHash],
+    txHashes: [createTxHash, recordsTxHash],
   };
 }
