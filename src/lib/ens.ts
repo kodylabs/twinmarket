@@ -1,4 +1,5 @@
 import { addEnsContracts } from '@ensdomains/ensjs';
+import { batch, getAddressRecord, getTextRecord } from '@ensdomains/ensjs/public';
 import { setRecords } from '@ensdomains/ensjs/wallet';
 import { createPublicClient, createWalletClient, type Hash, http, labelhash, namehash } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -95,11 +96,47 @@ export async function registerEnsName(
       { key: 'world.agentbook_id', value: metadata.worldAgentbookId },
     ],
     nonce: nonce + 1,
-    gas: 1_000_000n,
+    gas: BigInt(1_000_000),
   });
 
   return {
     ensName,
     txHashes: [createTxHash, recordsTxHash],
+  };
+}
+
+const ENS_TEXT_KEYS = ['description', 'url', 'avatar', 'world.verified', 'world.agentbook_id'] as const;
+
+export type EnsRecords = {
+  description: string | null;
+  url: string | null;
+  avatar: string | null;
+  worldVerified: string | null;
+  worldAgentbookId: string | null;
+  ethAddress: string | null;
+};
+
+export async function getEnsRecords(ensName: string): Promise<EnsRecords> {
+  const client = createPublicClient({
+    chain: addEnsContracts(sepolia),
+    transport: http(getRpcUrl()),
+  });
+
+  const results = await batch(
+    client,
+    ...ENS_TEXT_KEYS.map((key) => getTextRecord.batch({ name: ensName, key })),
+    getAddressRecord.batch({ name: ensName, coin: 'ETH' }),
+  );
+
+  const textResults = results.slice(0, ENS_TEXT_KEYS.length) as (string | null)[];
+  const addressResult = results[ENS_TEXT_KEYS.length] as { value: string } | null;
+
+  return {
+    description: textResults[0] ?? null,
+    url: textResults[1] ?? null,
+    avatar: textResults[2] ?? null,
+    worldVerified: textResults[3] ?? null,
+    worldAgentbookId: textResults[4] ?? null,
+    ethAddress: addressResult?.value ?? null,
   };
 }
