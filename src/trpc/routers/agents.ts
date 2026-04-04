@@ -176,7 +176,6 @@ export const agentsRouter = router({
         avatar: '',
         worldVerified: dbUser?.verificationLevel ?? '',
         worldAgentbookId: '',
-        arcAddress: wallet.address,
       });
 
       const agentKitResult = await registerAgentOnWorldChain(wallet.address);

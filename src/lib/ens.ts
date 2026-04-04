@@ -15,7 +15,6 @@ type AgentRecordsParams = {
   avatar: string;
   worldVerified: string;
   worldAgentbookId: string;
-  arcAddress: string;
 };
 
 function getEnsOwnerClient() {
@@ -63,7 +62,6 @@ export async function registerEnsName(
       { key: 'avatar', value: metadata.avatar },
       { key: 'world.verified', value: metadata.worldVerified },
       { key: 'world.agentbook_id', value: metadata.worldAgentbookId },
-      { key: 'arc.address', value: metadata.arcAddress },
     ],
   });
 
