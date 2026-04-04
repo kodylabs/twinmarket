@@ -9,7 +9,7 @@ async function seed() {
   await db.delete(userTable);
 
   // Create users
-  const [alice, bob] = await db
+  const [alice, _bob] = await db
     .insert(userTable)
     .values([
       {
@@ -26,33 +26,6 @@ async function seed() {
     .returning();
 
   console.log(`✅ Created ${2} users`);
-
-  // Create posts
-  await db.insert(postTable).values([
-    {
-      id: '1',
-      title: 'Getting Started with Drizzle ORM',
-      content: 'Drizzle ORM is a TypeScript-first ORM that provides excellent type safety...',
-      published: 'true',
-      authorId: alice.id,
-    },
-    {
-      id: '2',
-      title: 'Building Modern APIs',
-      content: 'Modern API development requires careful consideration of many factors...',
-      published: 'true',
-      authorId: alice.id,
-    },
-    {
-      id: '3',
-      title: 'Draft: Upcoming Features',
-      content: 'This is a draft post about upcoming features...',
-      published: 'false',
-      authorId: bob.id,
-    },
-  ]);
-
-  console.log(`✅ Created ${3} posts`);
 
   // Create test agent
   const [agent] = await db

@@ -15,6 +15,13 @@
       "when": 1775297111087,
       "tag": "0001_curvy_baron_strucker",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775297312170,
+      "tag": "0002_wandering_ego",
+      "breakpoints": true
     }
   ]
 }
