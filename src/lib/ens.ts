@@ -1,6 +1,6 @@
 import { addEnsContracts } from '@ensdomains/ensjs';
 import { createSubname, setRecords, setResolver } from '@ensdomains/ensjs/wallet';
-import { createWalletClient, type Hash, http } from 'viem';
+import { createPublicClient, createWalletClient, type Hash, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
 
@@ -17,19 +17,33 @@ type AgentRecordsParams = {
   worldAgentbookId: string;
 };
 
+function getRpcUrl() {
+  return process.env.SEPOLIA_RPC_URL;
+}
+
 function getEnsOwnerClient() {
   const privateKey = process.env.ENS_OWNER_PRIVATE_KEY;
   if (!privateKey) {
     throw new Error('ENS_OWNER_PRIVATE_KEY environment variable is not set');
   }
 
-  const rpcUrl = process.env.SEPOLIA_RPC_URL;
-
   return createWalletClient({
     account: privateKeyToAccount(privateKey as `0x${string}`),
     chain: addEnsContracts(sepolia),
-    transport: http(rpcUrl),
+    transport: http(getRpcUrl()),
   });
+}
+
+function getPublicClient() {
+  return createPublicClient({
+    chain: sepolia,
+    transport: http(getRpcUrl()),
+  });
+}
+
+async function waitForTx(hash: Hash) {
+  const client = getPublicClient();
+  await client.waitForTransactionReceipt({ hash });
 }
 
 export async function registerEnsName(
@@ -40,19 +54,19 @@ export async function registerEnsName(
   const wallet = getEnsOwnerClient();
   const ensName = `${slug}.${PARENT_DOMAIN}`;
 
-  // Parent wallet creates subname and stays owner (agent wallet has no ETH for gas)
-  // The addr record points to the agent wallet for resolution
   const subnameTxHash = await createSubname(wallet, {
     name: ensName,
     owner: wallet.account.address,
     contract: 'registry',
   });
+  await waitForTx(subnameTxHash);
 
-  await setResolver(wallet, {
+  const resolverTxHash = await setResolver(wallet, {
     name: ensName,
     contract: 'registry',
     resolverAddress: SEPOLIA_PUBLIC_RESOLVER,
   });
+  await waitForTx(resolverTxHash);
 
   const recordsTxHash = await setRecords(wallet, {
     name: ensName,
@@ -66,9 +80,10 @@ export async function registerEnsName(
       { key: 'world.agentbook_id', value: metadata.worldAgentbookId },
     ],
   });
+  await waitForTx(recordsTxHash);
 
   return {
     ensName,
-    txHashes: [subnameTxHash, recordsTxHash],
+    txHashes: [subnameTxHash, resolverTxHash, recordsTxHash],
   };
 }
