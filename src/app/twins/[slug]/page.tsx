@@ -1,8 +1,17 @@
-import { Copy, ShieldCheck, Zap } from 'lucide-react';
+import { ExternalLink, ShieldCheck } from 'lucide-react';
 import { notFound } from 'next/navigation';
+import { InfoLine } from '@/components/info-line';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { caller } from '@/trpc/server';
+import { PriceChart, UsageChart } from './twin-charts';
+
+const AGENTBOOK_CONTRACT = '0xA23aB2712eA7BBa896930544C7d6636a96b944dA';
+
+function truncateAddress(address: string) {
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
 
 function formatCalls(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
@@ -21,133 +30,163 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
   }
 
   const verified = !!agent.creator?.nullifierHash;
+  const ensRecords = agent.ensRecords;
+  const description = ensRecords?.description || agent.description;
 
   return (
-    <div className='container mx-auto max-w-5xl space-y-8 p-6'>
-      {/* Header */}
-      <div className='flex items-start justify-between'>
-        <div className='space-y-2'>
-          <div className='flex items-center gap-3'>
-            {verified && <ShieldCheck className='size-6 text-primary' />}
-            <h1 className='text-3xl font-bold'>{agent.name}</h1>
-          </div>
-          <p className='text-sm text-muted-foreground'>
-            Created by {agent.ensName ?? agent.walletAddress ?? 'Unknown'}
-          </p>
-        </div>
-        <div className='text-right text-sm'>
-          {verified ? (
-            <Badge variant='outline' className='gap-1'>
-              <ShieldCheck className='size-3' />
-              World ID
-            </Badge>
-          ) : (
-            <Badge variant='secondary'>Unverified</Badge>
-          )}
-        </div>
-      </div>
-
-      {/* Stats + Content */}
-      <div className='grid gap-6 lg:grid-cols-[1fr_320px]'>
-        <div className='space-y-8'>
-          {/* Stats row */}
-          <div className='grid grid-cols-2 gap-4'>
-            <Card>
-              <CardHeader>
-                <CardTitle className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>
-                  Price per Call
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className='text-2xl font-bold'>{agent.pricePerCall}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>
-                  Total Calls
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className='text-2xl font-bold'>{formatCalls(agent.totalCalls)}</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Description */}
-          <div className='space-y-3'>
-            <h2 className='text-lg font-semibold'>Description</h2>
-            <p className='leading-relaxed text-muted-foreground'>{agent.description}</p>
-          </div>
-
-          {/* Skills */}
-          {agent.skills.length > 0 && (
-            <div className='space-y-3'>
-              <h2 className='text-lg font-semibold'>Skills</h2>
-              <div className='space-y-3'>
-                {agent.skills.map((skill) => (
-                  <Card key={skill.id}>
-                    <CardHeader>
-                      <CardTitle className='text-sm'>{skill.title}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className='text-sm text-muted-foreground'>{skill.content}</p>
-                    </CardContent>
-                  </Card>
-                ))}
+    <div className='container mx-auto max-w-5xl space-y-6 p-6'>
+      <div className='grid gap-6 lg:grid-cols-3'>
+        {/* Pokemon Card spans 2 rows */}
+        <Card className='overflow-hidden border-2 lg:row-span-2'>
+          <CardHeader className='space-y-4 pb-4'>
+            <div className='flex items-center gap-4'>
+              <div className='flex size-16 shrink-0 items-center justify-center rounded-xl border-2 bg-muted'>
+                <span className='text-2xl font-bold text-muted-foreground'>{agent.name.slice(0, 2).toUpperCase()}</span>
               </div>
-            </div>
-          )}
-
-          {/* How to Use */}
-          <div className='space-y-3'>
-            <h2 className='text-lg font-semibold'>How to Use</h2>
-            <p className='text-sm text-muted-foreground'>
-              Copy and run in your CLI to trigger the agent directly from your terminal.
-            </p>
-            <div className='relative rounded-lg border bg-muted/50 p-4'>
-              <p className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>Terminal Command</p>
-              <code className='mt-2 block font-mono text-sm'>/{agent.slug} help me with my project</code>
-              <button
-                type='button'
-                className='absolute right-3 top-3 rounded p-1 text-muted-foreground hover:text-foreground'
-              >
-                <Copy className='size-4' />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Sidebar */}
-        <div className='space-y-4'>
-          <Card>
-            <CardContent>
-              <button
-                type='button'
-                className='inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90'
-              >
-                <Zap className='size-4' />
-                Use Agent
-              </button>
-            </CardContent>
-            <CardFooter className='flex-col items-stretch gap-2 border-t text-sm'>
-              <div className='flex justify-between'>
-                <span className='text-muted-foreground'>Price</span>
-                <span className='font-medium'>{agent.pricePerCall}</span>
-              </div>
-              <div className='flex justify-between'>
-                <span className='text-muted-foreground'>Total calls</span>
-                <span className='font-medium'>{formatCalls(agent.totalCalls)}</span>
-              </div>
-              {agent.ensName && (
-                <div className='flex justify-between'>
-                  <span className='text-muted-foreground'>ENS</span>
-                  <span className='font-medium'>{agent.ensName}</span>
+              <div className='min-w-0 flex-1'>
+                <div className='flex items-center gap-2'>
+                  <h1 className='text-2xl font-bold'>{agent.name}</h1>
+                  {verified && (
+                    <Badge variant='outline' className='gap-1'>
+                      <ShieldCheck className='size-3' />
+                      World ID
+                    </Badge>
+                  )}
                 </div>
-              )}
-            </CardFooter>
-          </Card>
-        </div>
+                <p className='mt-1 text-sm leading-relaxed text-muted-foreground'>{description}</p>
+              </div>
+            </div>
+          </CardHeader>
+
+          <Separator />
+
+          <CardContent className='space-y-3 pt-4'>
+            <p className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>On-chain Identity</p>
+
+            {agent.ensName && (
+              <InfoLine
+                orientation='vertical'
+                label='ENS'
+                value={
+                  <a
+                    href={`https://sepolia.app.ens.domains/${agent.ensName}`}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='inline-flex items-center gap-1.5 font-mono text-sm font-medium hover:underline'
+                  >
+                    {agent.ensName}
+                    <ExternalLink className='size-3' />
+                  </a>
+                }
+              />
+            )}
+
+            {agent.walletAddress && (
+              <InfoLine
+                orientation='vertical'
+                label='Wallet'
+                value={
+                  <a
+                    href={`https://worldscan.org/address/${agent.walletAddress}`}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='inline-flex items-center gap-1.5 font-mono text-sm font-medium hover:underline'
+                  >
+                    {truncateAddress(agent.walletAddress)}
+                    <ExternalLink className='size-3' />
+                  </a>
+                }
+              />
+            )}
+
+            <InfoLine
+              orientation='vertical'
+              label='AgentBook'
+              value={
+                agent.agentBook.isRegistered ? (
+                  <a
+                    href={`https://worldscan.org/address/${AGENTBOOK_CONTRACT}#readContract`}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='text-muted-foreground hover:text-foreground'
+                  >
+                    <Badge variant='outline' className='gap-1 text-xs'>
+                      <span className='size-1.5 rounded-full bg-green-500' />
+                      Registered
+                      <ExternalLink className='size-3' />
+                    </Badge>
+                  </a>
+                ) : (
+                  <Badge variant='secondary' className='text-xs'>
+                    Not registered
+                  </Badge>
+                )
+              }
+            />
+
+            {ensRecords?.worldVerified && (
+              <InfoLine
+                orientation='vertical'
+                label='Verification'
+                value={
+                  <Badge variant='outline' className='gap-1 text-xs'>
+                    <ShieldCheck className='size-3' />
+                    {ensRecords.worldVerified === 'orb' ? 'Orb Verified' : 'Device Verified'}
+                  </Badge>
+                }
+              />
+            )}
+
+            {ensRecords?.url && (
+              <InfoLine
+                orientation='vertical'
+                label='URL'
+                value={
+                  <a
+                    href={ensRecords.url}
+                    className='flex items-center gap-1.5 whitespace-nowrap'
+                    target='_blank'
+                    rel='noopener noreferrer'
+                  >
+                    {ensRecords.url.replace('https://', '')}
+                    <ExternalLink className='size-3' />
+                  </a>
+                }
+              />
+            )}
+          </CardContent>
+
+          <Separator />
+
+          <CardFooter className='flex items-center justify-between pt-4 text-sm'>
+            <div>
+              <span className='text-xs uppercase text-muted-foreground'>Price</span>
+              <p className='font-medium'>{agent.pricePerCall}</p>
+            </div>
+            <div className='text-right'>
+              <span className='text-xs uppercase text-muted-foreground'>Total Calls</span>
+              <p className='font-medium'>{formatCalls(agent.totalCalls)}</p>
+            </div>
+          </CardFooter>
+        </Card>
+
+        <Card>
+          <CardContent className='flex h-full flex-col items-center justify-center py-8'>
+            <p className='text-4xl font-bold'>{agent.skillCount}</p>
+            <p className='text-sm text-muted-foreground'>Skills</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className='flex h-full flex-col items-center justify-center py-8'>
+            <p className='text-4xl font-bold'>{agent.systemPromptLength.toLocaleString()}</p>
+            <p className='text-sm text-muted-foreground'>System Prompt (chars)</p>
+          </CardContent>
+        </Card>
+
+        {/* Row 2: Charts (col 2-3, pokemon card fills col 1 via row-span) */}
+        <PriceChart />
+        <UsageChart />
       </div>
     </div>
   );

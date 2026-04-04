@@ -43,9 +43,7 @@ export function TwinCard({ twin }: { twin: TwinCardData }) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className='flex items-start justify-between'>
-            <p className='line-clamp-2 text-sm text-muted-foreground'>{twin.description}</p>
-          </div>
+          <p className='line-clamp-2 text-sm text-muted-foreground'>{twin.description}</p>
         </CardContent>
 
         <CardFooter className='flex items-center justify-between border-t text-sm'>
