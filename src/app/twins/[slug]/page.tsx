@@ -1,5 +1,6 @@
-import { Copy, ExternalLink, ShieldCheck, Zap } from 'lucide-react';
+import { ExternalLink, ShieldCheck, Zap } from 'lucide-react';
 import { notFound } from 'next/navigation';
+import { InfoLine } from '@/components/info-line';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -59,100 +60,98 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
         <Separator />
 
         {/* On-chain Identity */}
-        <CardContent className='space-y-3 pt-4'>
+        <CardContent className='space-y-4'>
           <p className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>On-chain Identity</p>
+          <InfoLine
+            label='ENS'
+            value={
+              agent.ensName ? (
+                <a
+                  href={`https://sepolia.app.ens.domains/${agent.ensName}`}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='inline-flex items-center gap-1.5 font-mono text-sm font-medium hover:underline'
+                >
+                  {agent.ensName}
+                  <ExternalLink className='size-3' />
+                </a>
+              ) : null
+            }
+          />
 
-          {/* ENS Name */}
-          {agent.ensName && (
-            <div className='flex items-center justify-between'>
-              <span className='text-sm text-muted-foreground'>ENS</span>
-              <a
-                href={`https://sepolia.app.ens.domains/${agent.ensName}`}
-                target='_blank'
-                rel='noopener noreferrer'
-                className='inline-flex items-center gap-1.5 font-mono text-sm font-medium hover:underline'
-              >
-                {agent.ensName}
-                <ExternalLink className='size-3' />
-              </a>
-            </div>
-          )}
-
-          {/* Wallet Address */}
-          {agent.walletAddress && (
-            <div className='flex items-center justify-between'>
-              <span className='text-sm text-muted-foreground'>Wallet</span>
-              <div className='inline-flex items-center gap-1.5'>
+          <InfoLine
+            label='Wallet'
+            value={
+              agent.walletAddress ? (
                 <a
                   href={`https://worldscan.org/address/${agent.walletAddress}`}
                   target='_blank'
                   rel='noopener noreferrer'
-                  className='font-mono text-sm font-medium hover:underline'
+                  className='inline-flex items-center gap-1.5 font-mono text-sm font-medium hover:underline'
                 >
                   {truncateAddress(agent.walletAddress)}
+                  <ExternalLink className='size-3' />
                 </a>
-                <button type='button' className='rounded p-0.5 text-muted-foreground hover:text-foreground'>
-                  <Copy className='size-3' />
-                </button>
-              </div>
-            </div>
-          )}
+              ) : null
+            }
+          />
 
-          {/* AgentBook Status */}
-          <div className='flex items-center justify-between'>
-            <span className='text-sm text-muted-foreground'>AgentBook</span>
-            <div className='inline-flex items-center gap-2'>
-              {agent.agentBook.isRegistered ? (
-                <Badge variant='outline' className='gap-1 text-xs'>
-                  <span className='size-1.5 rounded-full bg-green-500' />
-                  Registered
-                </Badge>
+          <InfoLine
+            label='AgentBook'
+            value={
+              agent.agentBook.isRegistered ? (
+                <a
+                  href={`https://worldscan.org/address/${AGENTBOOK_CONTRACT}#readContract`}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='text-muted-foreground hover:text-foreground'
+                >
+                  <Badge variant='outline' className='gap-1 text-xs'>
+                    <span className='size-1.5 rounded-full bg-green-500' />
+                    Registered
+                    <ExternalLink className='size-3' />
+                  </Badge>
+                </a>
               ) : (
                 <Badge variant='secondary' className='text-xs'>
                   Not registered
                 </Badge>
-              )}
-              <a
-                href={`https://worldscan.org/address/${AGENTBOOK_CONTRACT}#readContract`}
-                target='_blank'
-                rel='noopener noreferrer'
-                className='text-muted-foreground hover:text-foreground'
-              >
-                <ExternalLink className='size-3' />
-              </a>
-            </div>
-          </div>
+              )
+            }
+          />
 
-          {/* ENS Records from chain */}
-          {ensRecords?.worldVerified && (
-            <div className='flex items-center justify-between'>
-              <span className='text-sm text-muted-foreground'>Verification</span>
-              <Badge variant='outline' className='gap-1 text-xs'>
-                <ShieldCheck className='size-3' />
-                {ensRecords.worldVerified === 'orb' ? 'Orb Verified' : 'Device Verified'}
-              </Badge>
-            </div>
-          )}
+          <InfoLine
+            label='Verification'
+            value={
+              ensRecords?.worldVerified ? (
+                <Badge variant='outline' className='gap-1 text-xs'>
+                  <ShieldCheck className='size-3' />
+                  {ensRecords.worldVerified === 'orb' ? 'Orb Verified' : 'Device Verified'}
+                </Badge>
+              ) : null
+            }
+          />
 
-          {ensRecords?.url && (
-            <div className='flex items-center justify-between'>
-              <span className='text-sm text-muted-foreground'>URL</span>
-              <a
-                href={ensRecords.url}
-                target='_blank'
-                rel='noopener noreferrer'
-                className='inline-flex items-center gap-1.5 text-sm hover:underline'
-              >
-                {ensRecords.url.replace('https://', '')}
-                <ExternalLink className='size-3' />
-              </a>
-            </div>
-          )}
+          <InfoLine
+            label='URL'
+            value={
+              ensRecords?.url ? (
+                <a
+                  href={ensRecords.url}
+                  className='whitespace-nowrap flex items-center gap-1.5'
+                  target='_blank'
+                  rel='noopener noreferrer'
+                >
+                  {ensRecords.url.replace('https://', '')}
+                  <ExternalLink className='size-3' />
+                </a>
+              ) : null
+            }
+          />
         </CardContent>
 
         <Separator />
 
-        {/* Stats */}
         <CardFooter className='flex items-center justify-between pt-4 text-sm'>
           <div>
             <span className='text-xs uppercase text-muted-foreground'>Price</span>
@@ -165,38 +164,20 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
         </CardFooter>
       </Card>
 
-      {/* Skills */}
-      {agent.skills.length > 0 && (
-        <div className='w-full space-y-3'>
-          <h2 className='text-lg font-semibold'>Skills</h2>
-          <div className='grid gap-3 sm:grid-cols-2'>
-            {agent.skills.map((skill) => (
-              <Card key={skill.id}>
-                <CardHeader>
-                  <p className='text-sm font-medium'>{skill.title}</p>
-                </CardHeader>
-                <CardContent>
-                  <p className='text-sm text-muted-foreground'>{skill.content}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* How to Use */}
-      <div className='w-full space-y-3'>
-        <h2 className='text-lg font-semibold'>How to Use</h2>
-        <div className='relative rounded-lg border bg-muted/50 p-4'>
-          <p className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>Terminal Command</p>
-          <code className='mt-2 block font-mono text-sm'>/{agent.slug} help me with my project</code>
-          <button
-            type='button'
-            className='absolute right-3 top-3 rounded p-1 text-muted-foreground hover:text-foreground'
-          >
-            <Copy className='size-4' />
-          </button>
-        </div>
+      {/* Agent Specs */}
+      <div className='grid w-full grid-cols-2 gap-4'>
+        <Card>
+          <CardContent className='pt-4 text-center'>
+            <p className='text-2xl font-bold'>{agent.skillCount}</p>
+            <p className='text-xs text-muted-foreground'>Skills</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className='pt-4 text-center'>
+            <p className='text-2xl font-bold'>{agent.systemPromptLength.toLocaleString()}</p>
+            <p className='text-xs text-muted-foreground'>System Prompt (chars)</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Use Agent CTA */}

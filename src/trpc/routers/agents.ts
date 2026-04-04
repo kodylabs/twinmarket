@@ -60,12 +60,18 @@ export const agentsRouter = router({
       throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
     }
 
-    const { systemPrompt, privateKey, ...publicAgent } = agent;
+    const { systemPrompt, privateKey, skills, ...publicAgent } = agent;
     const [agentBookStatus, ensRecords] = await Promise.all([
       lookupAgentBookStatus(agent.walletAddress),
       agent.ensName ? getEnsRecords(agent.ensName) : null,
     ]);
-    return { ...publicAgent, agentBook: agentBookStatus, ensRecords };
+    return {
+      ...publicAgent,
+      agentBook: agentBookStatus,
+      ensRecords,
+      skillCount: skills.length,
+      systemPromptLength: systemPrompt.length,
+    };
   }),
 
   mine: protectedProcedure.query(async ({ ctx }) => {
