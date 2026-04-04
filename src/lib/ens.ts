@@ -1,5 +1,5 @@
 import { addEnsContracts } from '@ensdomains/ensjs';
-import { createSubname, setRecords } from '@ensdomains/ensjs/wallet';
+import { createSubname, setRecords, setResolver } from '@ensdomains/ensjs/wallet';
 import { createWalletClient, type Hash, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
@@ -45,6 +45,12 @@ export async function registerEnsName(
     name: ensName,
     owner: wallet.account.address,
     contract: 'registry',
+  });
+
+  await setResolver(wallet, {
+    name: ensName,
+    contract: 'registry',
+    resolverAddress: SEPOLIA_PUBLIC_RESOLVER,
   });
 
   const recordsTxHash = await setRecords(wallet, {
