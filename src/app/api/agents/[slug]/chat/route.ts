@@ -1,20 +1,12 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import type { AgentWithSkills } from '@/lib/db';
+import { buildSystemPrompt } from '@/lib/agent-prompt';
 import { agentTable, db, eq, sql } from '@/lib/db';
 import { chatCompletion } from '@/lib/llm/openrouter';
 
 const chatInputSchema = z.object({
   message: z.string().min(1, 'Message is required').max(4000),
 });
-
-function buildSystemPrompt(agent: AgentWithSkills): string {
-  const skillsBlock = agent.skills.map((s) => `## ${s.title}\n${s.content}`).join('\n\n');
-
-  if (!skillsBlock) return agent.systemPrompt;
-
-  return `${agent.systemPrompt}\n\n---\n\nYour knowledge and skills:\n\n${skillsBlock}`;
-}
 
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -41,7 +33,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   }
 
   // 3. Build system prompt and call LLM
-  const systemPrompt = buildSystemPrompt(agent);
+  const systemPrompt = buildSystemPrompt(agent.systemPrompt, agent.skills);
 
   let response: string;
   try {
