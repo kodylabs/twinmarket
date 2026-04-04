@@ -293,7 +293,9 @@ Auth         : better-auth + SIWE (RainbowKit)
 Database     : PostgreSQL + Drizzle ORM
 Blockchain   : viem + wagmi
 Identity     : @worldcoin/idkit + @worldcoin/agentkit
-Payments     : x402-next + @coinbase/x402
+Payments     : x402-next + @coinbase/x402 (USDC sur Arc)
+Agent ID     : ERC-8004 on Arc (IdentityRegistry + ReputationRegistry)
+Bridge       : @circle-fin/app-kit (CCTP bridge USDC → Arc)
 Naming       : ENS (viem/ens + NameStone API)
 AI           : OpenAI API (gpt-4o) or Anthropic (claude-sonnet)
 Deploy       : Vercel
