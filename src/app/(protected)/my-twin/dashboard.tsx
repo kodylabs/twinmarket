@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { Bar, BarChart, XAxis } from 'recharts';
+import { toast } from 'sonner';
 import { InfoLine } from '@/components/info-line';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -107,6 +108,10 @@ export function MyTwinDashboard() {
         queryClient.invalidateQueries({ queryKey: trpc.agents.mine.queryOptions().queryKey });
         setEditingPrompt(false);
         setEditingSkills(false);
+        toast.success('Agent updated');
+      },
+      onError: (error) => {
+        toast.error(error.message);
       },
     }),
   );
@@ -339,7 +344,7 @@ export function MyTwinDashboard() {
                 className='min-h-[200px] font-mono text-sm'
               />
             ) : (
-              <pre className='whitespace-pre-wrap rounded-md border bg-muted/50 p-4 text-sm leading-relaxed'>
+              <pre className='whitespace-pre-wrap break-all overflow-hidden rounded-md border bg-muted/50 p-4 text-sm leading-relaxed'>
                 {agent.systemPrompt}
               </pre>
             )}

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import '@/styles/globals.css';
 import localFont from 'next/font/local';
+import { Toaster } from 'sonner';
 import { AppProviders } from '@/components/app-providers';
 import { Header } from '@/components/header';
 
@@ -35,6 +36,7 @@ export default function RootLayout({
         <AppProviders>
           <Header />
           <main>{children}</main>
+          <Toaster richColors />
         </AppProviders>
       </body>
     </html>
