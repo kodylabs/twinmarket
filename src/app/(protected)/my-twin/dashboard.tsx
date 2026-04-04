@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { Bar, BarChart, XAxis } from 'recharts';
+import { InfoLine } from '@/components/info-line';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -117,7 +118,6 @@ export function MyTwinDashboard() {
   return (
     <div className='container mx-auto max-w-6xl space-y-6 p-6'>
       <div className='grid gap-6 lg:grid-cols-3'>
-        {/* Row 1: Agent Info (col-span-2) + World ID (col-span-1) */}
         <Card className='lg:col-span-2'>
           <CardHeader>
             <CardTitle className='flex items-center gap-2'>
@@ -127,52 +127,62 @@ export function MyTwinDashboard() {
                 {agent.status}
               </Badge>
             </CardTitle>
-            <CardAction>
-              <Button variant='outline' size='sm' disabled>
-                <Pencil className='size-3' />
-                Edit
-              </Button>
-            </CardAction>
           </CardHeader>
           <CardContent className='flex gap-6'>
             <div className='flex size-24 shrink-0 items-center justify-center rounded-lg border bg-muted'>
               <span className='text-3xl font-bold text-muted-foreground'>{agent.name.slice(0, 2)}</span>
             </div>
-            <div className='space-y-2'>
+            <div className='space-y-2 w-full'>
               <p className='text-sm text-muted-foreground'>{agent.description}</p>
-              <div className='flex flex-wrap items-center gap-3'>
-                {agent.ensName && (
-                  <a
-                    href={`https://sepolia.app.ens.domains/${agent.ensName}`}
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    className='inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground'
-                  >
-                    {agent.ensName}
-                    <ExternalLink className='size-3' />
-                  </a>
-                )}
-                {agent.walletAddress && (
-                  <a
-                    href={`https://worldscan.org/address/${agent.walletAddress}`}
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    className='inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground'
-                  >
-                    {agent.walletAddress.slice(0, 6)}...{agent.walletAddress.slice(-4)}
-                    <ExternalLink className='size-3' />
-                  </a>
-                )}
-                <a
-                  href='https://worldscan.org/address/0xA23aB2712eA7BBa896930544C7d6636a96b944dA#readContract'
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  className='inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground'
-                >
-                  AgentBook
-                  <ExternalLink className='size-3' />
-                </a>
-              </div>
+
+              <InfoLine
+                label='ENS'
+                value={
+                  agent.ensName ? (
+                    <a
+                      href={`https://sepolia.app.ens.domains/${agent.ensName}`}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='inline-flex items-center gap-1 font-mono text-xs'
+                    >
+                      {agent.ensName}
+                      <ExternalLink className='size-3' />
+                    </a>
+                  ) : null
+                }
+              />
+              <InfoLine
+                label='Wallet'
+                value={
+                  agent.walletAddress ? (
+                    <a
+                      href={`https://worldscan.org/address/${agent.walletAddress}`}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='inline-flex items-center gap-1 font-mono text-xs'
+                    >
+                      {agent.walletAddress.slice(0, 6)}...{agent.walletAddress.slice(-4)}
+                      <ExternalLink className='size-3' />
+                    </a>
+                  ) : null
+                }
+              />
+              <InfoLine
+                label='AgentBook'
+                value={
+                  agent.agentBook.isRegistered ? (
+                    <a
+                      href={`https://worldscan.org/address/${agent.walletAddress}`}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='inline-flex items-center gap-1 font-mono text-xs'
+                    >
+                      Registered
+                      <ExternalLink className='size-3' />
+                    </a>
+                  ) : null
+                }
+              />
             </div>
           </CardContent>
         </Card>
@@ -206,7 +216,6 @@ export function MyTwinDashboard() {
           </CardContent>
         </Card>
 
-        {/* Row 2: Weekly Calls + Revenue + Stats Summary */}
         <Card>
           <CardHeader>
             <CardTitle className='flex items-center gap-2'>
@@ -273,7 +282,6 @@ export function MyTwinDashboard() {
           </CardContent>
         </Card>
 
-        {/* Row 3: System Prompt (col-span-2) + Skills (col-span-1) */}
         <Card className='lg:col-span-2'>
           <CardHeader>
             <CardTitle className='flex items-center gap-2'>
@@ -435,7 +443,6 @@ export function MyTwinDashboard() {
           </CardContent>
         </Card>
 
-        {/* Row 4: Recent Usage (col-span-3) */}
         <Card className='lg:col-span-3'>
           <CardHeader>
             <CardTitle className='flex items-center gap-2'>

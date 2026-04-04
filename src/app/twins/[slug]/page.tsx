@@ -65,6 +65,7 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
 
             {agent.ensName && (
               <InfoLine
+                orientation='vertical'
                 label='ENS'
                 value={
                   <a
@@ -82,6 +83,7 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
 
             {agent.walletAddress && (
               <InfoLine
+                orientation='vertical'
                 label='Wallet'
                 value={
                   <a
@@ -98,6 +100,7 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
             )}
 
             <InfoLine
+              orientation='vertical'
               label='AgentBook'
               value={
                 agent.agentBook.isRegistered ? (
@@ -123,6 +126,7 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
 
             {ensRecords?.worldVerified && (
               <InfoLine
+                orientation='vertical'
                 label='Verification'
                 value={
                   <Badge variant='outline' className='gap-1 text-xs'>
@@ -135,6 +139,7 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
 
             {ensRecords?.url && (
               <InfoLine
+                orientation='vertical'
                 label='URL'
                 value={
                   <a
