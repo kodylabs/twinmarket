@@ -67,8 +67,13 @@ export function ReviewContent({ name, bio, systemPrompt, skills }: ReviewContent
       await clearWizardAction();
       router.push('/my-twin');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-      if (phase === 'scanning') return; // bridge error already shown
+      const message = err instanceof Error ? err.message : 'Something went wrong';
+      if (message.includes('already have an agent')) {
+        await clearWizardAction();
+        router.push('/my-twin');
+        return;
+      }
+      setError(message);
       setPhase('review');
     }
   }
