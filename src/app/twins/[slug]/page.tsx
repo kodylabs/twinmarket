@@ -1,4 +1,4 @@
-import { ExternalLink, ShieldCheck, Zap } from 'lucide-react';
+import { ExternalLink, ShieldCheck } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { InfoLine } from '@/components/info-line';
 import { Badge } from '@/components/ui/badge';
@@ -36,8 +36,8 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
   return (
     <div className='container mx-auto max-w-5xl space-y-6 p-6'>
       <div className='grid gap-6 lg:grid-cols-3'>
-        {/* Row 1: Pokemon Card + Stats */}
-        <Card className='overflow-hidden border-2'>
+        {/* Pokemon Card spans 2 rows */}
+        <Card className='overflow-hidden border-2 lg:row-span-2'>
           <CardHeader className='space-y-4 pb-4'>
             <div className='flex items-center gap-4'>
               <div className='flex size-16 shrink-0 items-center justify-center rounded-xl border-2 bg-muted'>
@@ -179,22 +179,7 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
           </CardContent>
         </Card>
 
-        {/* Row 2: CTA + Charts */}
-        <Card>
-          <CardContent className='flex h-full flex-col items-center justify-center gap-4 py-8'>
-            <div className='flex size-20 items-center justify-center rounded-full border-2 bg-muted'>
-              <Zap className='size-8 text-primary' />
-            </div>
-            <button
-              type='button'
-              className='inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90'
-            >
-              <Zap className='size-4' />
-              Use Agent
-            </button>
-          </CardContent>
-        </Card>
-
+        {/* Row 2: Charts (col 2-3, pokemon card fills col 1 via row-span) */}
         <PriceChart />
         <UsageChart />
       </div>
