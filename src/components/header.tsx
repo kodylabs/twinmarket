@@ -62,8 +62,8 @@ export function Header() {
   const isAuthenticated = !!session;
 
   return (
-    <header className='flex h-12 items-center border-b px-6'>
-      <Link href='/' className='text-lg font-bold'>
+    <header className='sticky top-0 z-50 flex h-14 items-center border-b bg-background/80 backdrop-blur-md px-6'>
+      <Link href='/' className='text-lg font-bold tracking-tight'>
         twinmarket
       </Link>
 

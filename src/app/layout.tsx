@@ -1,19 +1,19 @@
 import type { Metadata } from 'next';
 import '@/styles/globals.css';
-import localFont from 'next/font/local';
+import { Inter, Space_Grotesk } from 'next/font/google';
 import { AppProviders } from '@/components/app-providers';
 import { Header } from '@/components/header';
 
-const geistSans = localFont({
-  src: '../styles/fonts/geist-sans-vf.woff',
-  variable: '--font-geist-sans',
-  weight: '100 900',
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  weight: ['400', '500', '600', '700'],
 });
 
-const geistMono = localFont({
-  src: '../styles/fonts/geist-mono-vf.woff',
-  variable: '--font-geist-mono',
-  weight: '100 900',
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-space-grotesk',
+  weight: ['400', '500', '600', '700'],
 });
 
 export const metadata: Metadata = {
@@ -31,7 +31,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='en' suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
+      <body className={`${inter.variable} ${spaceGrotesk.variable} antialiased`} suppressHydrationWarning>
         <AppProviders>
           <Header />
           <main>{children}</main>

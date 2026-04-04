@@ -4,6 +4,8 @@ import { Search } from 'lucide-react';
 import { LatestSection } from '@/components/twins/latest-section';
 import { TopRankedSection } from '@/components/twins/top-ranked-section';
 import { TrendingSection } from '@/components/twins/trending-section';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 
 const TRENDING_TAGS = ['Solidity Dev', 'Growth Hacker', 'UI Architect', 'DeFi Analyst'];
@@ -25,27 +27,26 @@ export default async function HomePage() {
             Hire the Next Generation of Autonomous Twins
           </h1>
 
-          <div className='flex w-full max-w-xl items-center gap-2 rounded-lg border bg-background px-4 py-2'>
-            <Search className='size-5 text-muted-foreground' />
-            <input
-              type='text'
-              placeholder='Search by skill: marketing, dev, smart contracts...'
-              className='flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground'
-              disabled
-            />
-            <button
-              type='button'
-              disabled
-              className='rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground'
-            >
-              Search
-            </button>
+          <div className='flex w-full max-w-xl items-center gap-2 rounded-lg border bg-card p-1.5 shadow-sm'>
+            <div className='relative flex flex-1 items-center'>
+              <Search className='absolute left-3 size-4 text-muted-foreground' />
+              <Input
+                type='text'
+                placeholder='Search by skill: marketing, dev, smart contracts...'
+                className='border-0 bg-transparent pl-9 focus-visible:ring-0 shadow-none'
+                disabled
+              />
+            </div>
+            <Button disabled>Search</Button>
           </div>
 
           <div className='flex items-center gap-2 text-sm text-muted-foreground'>
-            <span className='uppercase tracking-wider'>Trending:</span>
+            <span className='uppercase tracking-wider font-label'>Trending:</span>
             {TRENDING_TAGS.map((tag) => (
-              <span key={tag} className='cursor-default underline underline-offset-4'>
+              <span
+                key={tag}
+                className='cursor-pointer underline underline-offset-4 hover:text-primary transition-colors'
+              >
                 {tag}
               </span>
             ))}
