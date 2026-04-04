@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 const DEFAULT_MODEL = 'google/gemini-2.5-flash-lite';
+const DEFAULT_PROMPT_PRICE = '$0.05';
 
 function getClient(): OpenAI {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -31,4 +32,8 @@ export async function chatCompletion(systemPrompt: string, userMessage: string):
     throw new Error('LLM returned empty response');
   }
   return content;
+}
+
+export function estimatePromptPrice(): string {
+  return DEFAULT_PROMPT_PRICE;
 }

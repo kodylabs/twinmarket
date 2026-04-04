@@ -6,6 +6,7 @@
  */
 
 import { getAgentPricing } from '@/lib/ens';
+import { estimatePromptPrice } from './llm/openrouter';
 
 export interface AgentPricing {
   price: number | null;
@@ -20,9 +21,11 @@ export async function resolveAgentPricing(slug: string): Promise<AgentPricing> {
   }
 
   const price = parseFloat(priceText.replace('$', ''));
+  const promptPrice = estimatePromptPrice();
+
   if (Number.isNaN(price) || price <= 0) {
     return { price: null, agentAddress: null };
   }
 
-  return { price, agentAddress };
+  return { price: price + parseFloat(promptPrice), agentAddress };
 }
