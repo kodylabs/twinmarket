@@ -66,6 +66,100 @@ async function main() {
     },
   );
 
+  // Tool 3: Check Gateway balance
+  server.registerTool(
+    'get-balance',
+    {
+      title: 'Check your USDC balance',
+      description: 'Shows your wallet balance and Gateway balance (available for agent calls).',
+    },
+    async () => {
+      const balances = await gateway.getBalances();
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                wallet: balances.wallet.formatted,
+                gateway: {
+                  available: balances.gateway.formattedAvailable,
+                  total: balances.gateway.formattedTotal,
+                },
+                address: gateway.address,
+                network: 'Arc testnet',
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  );
+
+  // Tool 4: Deposit USDC into Gateway (one-time, requires gas)
+  server.registerTool(
+    'deposit',
+    {
+      title: 'Deposit USDC into Gateway for gasless agent payments',
+      description:
+        'Moves USDC from your wallet into Circle Gateway. This is a one-time on-chain transaction. After deposit, all agent calls are gasless.',
+      inputSchema: {
+        amount: z.string().describe('Amount of USDC to deposit (e.g. "1.00")'),
+      },
+    },
+    async (args) => {
+      const result = await gateway.deposit(args.amount);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                deposited: result.formattedAmount,
+                depositTx: result.depositTxHash,
+                approvalTx: result.approvalTxHash ?? null,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  );
+
+  // Tool 5: Withdraw USDC from Gateway back to wallet
+  server.registerTool(
+    'withdraw',
+    {
+      title: 'Withdraw USDC from Gateway back to your wallet',
+      description: 'Moves USDC from Circle Gateway back to your wallet. Instant on same chain.',
+      inputSchema: {
+        amount: z.string().describe('Amount of USDC to withdraw (e.g. "0.50")'),
+      },
+    },
+    async (args) => {
+      const result = await gateway.withdraw(args.amount);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                withdrawn: result.formattedAmount,
+                tx: result.mintTxHash,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  );
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
