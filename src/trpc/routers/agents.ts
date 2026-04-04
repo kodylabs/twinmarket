@@ -170,19 +170,14 @@ export const agentsRouter = router({
       });
 
       // On-chain ops first — if they fail, nothing is written to DB
-      const ensResult = await registerEnsName(
-        slug,
-        wallet.address as `0x${string}`,
-        wallet.privateKey as `0x${string}`,
-        {
-          description: input.bio,
-          url: `https://twinmarket.app/twins/${slug}`,
-          avatar: '',
-          worldVerified: dbUser?.verificationLevel ?? '',
-          worldAgentbookId: '',
-          arcAddress: wallet.address,
-        },
-      );
+      const ensResult = await registerEnsName(slug, wallet.address as `0x${string}`, {
+        description: input.bio,
+        url: `https://twinmarket.app/twins/${slug}`,
+        avatar: '',
+        worldVerified: dbUser?.verificationLevel ?? '',
+        worldAgentbookId: '',
+        arcAddress: wallet.address,
+      });
 
       const agentKitResult = await registerAgentOnWorldChain(wallet.address);
 

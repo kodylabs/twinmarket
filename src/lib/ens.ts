@@ -31,55 +31,34 @@ function getEnsOwnerClient() {
   });
 }
 
-function getEnsAgentClient(agentPrivateKey: `0x${string}`) {
-  return createWalletClient({
-    account: privateKeyToAccount(agentPrivateKey),
-    chain: addEnsContracts(sepolia),
-    transport: http(),
-  });
-}
-
-export async function registerSubname(slug: string, ownerAddress: `0x${string}`): Promise<Hash> {
-  const wallet = getEnsOwnerClient();
-
-  return createSubname(wallet, {
-    name: `${slug}.${PARENT_DOMAIN}`,
-    owner: ownerAddress,
-    contract: 'registry',
-  });
-}
-
-export async function setAgentRecords(agentPrivateKey: `0x${string}`, params: AgentRecordsParams): Promise<Hash> {
-  const wallet = getEnsAgentClient(agentPrivateKey);
-
-  return setRecords(wallet, {
-    name: params.ensName,
-    resolverAddress: SEPOLIA_PUBLIC_RESOLVER,
-    coins: [{ coin: 'ETH', value: params.ownerAddress }],
-    texts: [
-      { key: 'description', value: params.description },
-      { key: 'url', value: params.url },
-      { key: 'avatar', value: params.avatar },
-      { key: 'world.verified', value: params.worldVerified },
-      { key: 'world.agentbook_id', value: params.worldAgentbookId },
-      { key: 'arc.address', value: params.arcAddress },
-    ],
-  });
-}
-
 export async function registerEnsName(
   slug: string,
-  ownerAddress: `0x${string}`,
-  agentPrivateKey: `0x${string}`,
+  agentAddress: `0x${string}`,
   metadata: Omit<AgentRecordsParams, 'ensName' | 'ownerAddress'>,
 ): Promise<{ ensName: string; txHashes: Hash[] }> {
+  const wallet = getEnsOwnerClient();
   const ensName = `${slug}.${PARENT_DOMAIN}`;
 
-  const subnameTxHash = await registerSubname(slug, ownerAddress);
-  const recordsTxHash = await setAgentRecords(agentPrivateKey, {
-    ensName,
-    ownerAddress,
-    ...metadata,
+  // Parent wallet creates subname and stays owner (agent wallet has no ETH for gas)
+  // The addr record points to the agent wallet for resolution
+  const subnameTxHash = await createSubname(wallet, {
+    name: ensName,
+    owner: wallet.account.address,
+    contract: 'registry',
+  });
+
+  const recordsTxHash = await setRecords(wallet, {
+    name: ensName,
+    resolverAddress: SEPOLIA_PUBLIC_RESOLVER,
+    coins: [{ coin: 'ETH', value: agentAddress }],
+    texts: [
+      { key: 'description', value: metadata.description },
+      { key: 'url', value: metadata.url },
+      { key: 'avatar', value: metadata.avatar },
+      { key: 'world.verified', value: metadata.worldVerified },
+      { key: 'world.agentbook_id', value: metadata.worldAgentbookId },
+      { key: 'arc.address', value: metadata.arcAddress },
+    ],
   });
 
   return {
