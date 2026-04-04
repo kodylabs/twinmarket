@@ -165,6 +165,28 @@ export const agentsRouter = router({
 
       const agentId = crypto.randomUUID();
 
+      const dbUser = await ctx.db.query.userTable.findFirst({
+        where: eq(userTable.id, ctx.user.id),
+      });
+
+      // On-chain ops first — if they fail, nothing is written to DB
+      const ensResult = await registerEnsName(
+        slug,
+        wallet.address as `0x${string}`,
+        wallet.privateKey as `0x${string}`,
+        {
+          description: input.bio,
+          url: `https://twinmarket.app/twins/${slug}`,
+          avatar: '',
+          worldVerified: dbUser?.verificationLevel ?? '',
+          worldAgentbookId: '',
+          arcAddress: wallet.address,
+        },
+      );
+
+      const agentKitResult = await registerAgentOnWorldChain(wallet.address);
+
+      // All on-chain ops succeeded — now persist to DB atomically
       await ctx.db.transaction(async (tx) => {
         await tx.insert(agentTable).values({
           id: agentId,
@@ -175,7 +197,8 @@ export const agentsRouter = router({
           creatorId: ctx.user.id,
           walletAddress: wallet.address,
           privateKey: wallet.privateKey,
-          status: 'draft',
+          ensName: ensResult.ensName,
+          status: 'active',
         });
 
         for (let i = 0; i < input.skills.length; i++) {
@@ -189,49 +212,14 @@ export const agentsRouter = router({
         }
       });
 
-      const dbUser = await ctx.db.query.userTable.findFirst({
-        where: eq(userTable.id, ctx.user.id),
-      });
-
-      let ensName: string | undefined;
-      try {
-        const ensResult = await registerEnsName(slug, wallet.address as `0x${string}`, {
-          description: input.bio,
-          url: `https://twinmarket.app/twins/${slug}`,
-          avatar: '',
-          worldVerified: dbUser?.verificationLevel ?? '',
-          worldAgentbookId: '',
-          arcAddress: wallet.address,
-        });
-        ensName = ensResult.ensName;
-      } catch (error) {
-        console.warn('ENS registration failed:', error);
-      }
-
-      let agentBookId: string | undefined;
-      try {
-        const agentKitResult = await registerAgentOnWorldChain(wallet.address);
-        agentBookId = agentKitResult.agentBookId;
-      } catch (error) {
-        console.warn('AgentKit registration failed:', error);
-      }
-
-      await ctx.db
-        .update(agentTable)
-        .set({
-          status: 'active',
-          ensName: ensName ?? null,
-        })
-        .where(eq(agentTable.id, agentId));
-
       return {
         id: agentId,
         slug,
         name: input.name,
         description: input.bio,
         walletAddress: wallet.address,
-        ensName: ensName ?? null,
-        agentBookId: agentBookId ?? null,
+        ensName: ensResult.ensName,
+        agentBookId: agentKitResult.agentBookId ?? null,
         status: 'active',
       };
     }),

@@ -18,23 +18,29 @@ type AgentRecordsParams = {
   arcAddress: string;
 };
 
-function getEnsWalletClient() {
+function getEnsOwnerClient() {
   const privateKey = process.env.ENS_OWNER_PRIVATE_KEY;
   if (!privateKey) {
     throw new Error('ENS_OWNER_PRIVATE_KEY environment variable is not set');
   }
 
-  const account = privateKeyToAccount(privateKey as `0x${string}`);
-
   return createWalletClient({
-    account,
+    account: privateKeyToAccount(privateKey as `0x${string}`),
+    chain: addEnsContracts(sepolia),
+    transport: http(),
+  });
+}
+
+function getEnsAgentClient(agentPrivateKey: `0x${string}`) {
+  return createWalletClient({
+    account: privateKeyToAccount(agentPrivateKey),
     chain: addEnsContracts(sepolia),
     transport: http(),
   });
 }
 
 export async function registerSubname(slug: string, ownerAddress: `0x${string}`): Promise<Hash> {
-  const wallet = getEnsWalletClient();
+  const wallet = getEnsOwnerClient();
 
   return createSubname(wallet, {
     name: `${slug}.${PARENT_DOMAIN}`,
@@ -43,8 +49,8 @@ export async function registerSubname(slug: string, ownerAddress: `0x${string}`)
   });
 }
 
-export async function setAgentRecords(params: AgentRecordsParams): Promise<Hash> {
-  const wallet = getEnsWalletClient();
+export async function setAgentRecords(agentPrivateKey: `0x${string}`, params: AgentRecordsParams): Promise<Hash> {
+  const wallet = getEnsAgentClient(agentPrivateKey);
 
   return setRecords(wallet, {
     name: params.ensName,
@@ -64,12 +70,13 @@ export async function setAgentRecords(params: AgentRecordsParams): Promise<Hash>
 export async function registerEnsName(
   slug: string,
   ownerAddress: `0x${string}`,
+  agentPrivateKey: `0x${string}`,
   metadata: Omit<AgentRecordsParams, 'ensName' | 'ownerAddress'>,
 ): Promise<{ ensName: string; txHashes: Hash[] }> {
   const ensName = `${slug}.${PARENT_DOMAIN}`;
 
   const subnameTxHash = await registerSubname(slug, ownerAddress);
-  const recordsTxHash = await setAgentRecords({
+  const recordsTxHash = await setAgentRecords(agentPrivateKey, {
     ensName,
     ownerAddress,
     ...metadata,
