@@ -6,17 +6,17 @@ import { getWorldIdAppId, WORLD_ID_ACTION } from '@/lib/world-id';
 import { protectedProcedure, router } from '@/trpc/init';
 
 function getRpId(): string {
-  const rpId = process.env.WLD_RP_ID;
+  const rpId = process.env.NEXT_PUBLIC_WLD_RP_ID;
   if (!rpId) {
-    throw new Error('WLD_RP_ID must be set');
+    throw new Error('NEXT_PUBLIC_WLD_RP_ID must be set');
   }
   return rpId;
 }
 
 function getSigningKey(): string {
-  const key = process.env.WLD_SIGNING_KEY;
+  const key = process.env.WLD_RP_SIGNING_KEY;
   if (!key) {
-    throw new Error('WLD_SIGNING_KEY must be set');
+    throw new Error('WLD_RP_SIGNING_KEY must be set');
   }
   return key;
 }

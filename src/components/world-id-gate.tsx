@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { IDKitRequestWidget, type IDKitResult, orbLegacy } from '@worldcoin/idkit';
 import type React from 'react';
 import { useState } from 'react';
@@ -16,7 +16,7 @@ export function WorldIdGate({ children }: WorldIdGateProps) {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
 
-  const { data: status } = useSuspenseQuery(trpc.worldId.status.queryOptions());
+  const { data: status, isLoading: statusLoading } = useQuery(trpc.worldId.status.queryOptions());
   const { data: rpData } = useQuery(trpc.worldId.rpContext.queryOptions());
 
   const verifyMutation = useMutation(
@@ -27,7 +27,15 @@ export function WorldIdGate({ children }: WorldIdGateProps) {
     }),
   );
 
-  if (status.isVerified) {
+  if (statusLoading) {
+    return (
+      <div className='flex min-h-[calc(100vh-3.5rem)] items-center justify-center'>
+        <p className='text-muted-foreground'>Loading verification status...</p>
+      </div>
+    );
+  }
+
+  if (status?.isVerified) {
     return <>{children}</>;
   }
 
