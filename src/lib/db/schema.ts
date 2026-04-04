@@ -22,7 +22,7 @@ export const userTableRelations = relations(userTable, ({ many }) => ({
   accounts: many(userAccountTable),
   sessions: many(userSessionTable),
   walletAddresses: many(walletAddressTable),
-  posts: many(postTable),
+  agents: many(agentTable),
 }));
 
 // https://www.better-auth.com/docs/concepts/database#session
@@ -98,20 +98,46 @@ export const walletAddressTableRelations = relations(walletAddressTable, ({ one 
   }),
 }));
 
-export const postTable = pgTable('posts', {
+// --- Agents ---
+
+export const agentTable = pgTable('agents', {
   id: varchar('id', { length: 255 }).primaryKey(),
-  title: varchar('title', { length: 255 }).notNull(),
-  content: text('content').notNull(),
-  published: varchar('published', { length: 10 }).notNull().default('false'),
-  authorId: varchar('author_id', { length: 255 })
+  slug: varchar('slug', { length: 255 }).notNull().unique(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description').notNull(),
+  avatarUrl: text('avatar_url'),
+  systemPrompt: text('system_prompt').notNull(),
+  creatorId: varchar('creator_id', { length: 255 })
     .notNull()
     .references(() => userTable.id, { onDelete: 'cascade' }),
+  totalCalls: integer('total_calls').notNull().default(0),
+  status: varchar('status', { length: 20 }).notNull().default('draft'),
   ...timeColumns,
 });
 
-export const postsRelations = relations(postTable, ({ one }) => ({
-  author: one(userTable, {
-    fields: [postTable.authorId],
+export const agentTableRelations = relations(agentTable, ({ one, many }) => ({
+  creator: one(userTable, {
+    fields: [agentTable.creatorId],
     references: [userTable.id],
+  }),
+  skills: many(agentSkillTable),
+}));
+
+export const agentSkillTable = pgTable('agent_skills', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  agentId: varchar('agent_id', { length: 255 })
+    .notNull()
+    .references(() => agentTable.id, { onDelete: 'cascade' }),
+  title: varchar('title', { length: 255 }).notNull(),
+  content: text('content').notNull(),
+  type: varchar('type', { length: 20 }).notNull().default('prompt'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  ...timeColumns,
+});
+
+export const agentSkillTableRelations = relations(agentSkillTable, ({ one }) => ({
+  agent: one(agentTable, {
+    fields: [agentSkillTable.agentId],
+    references: [agentTable.id],
   }),
 }));
