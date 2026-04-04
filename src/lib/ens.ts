@@ -23,10 +23,12 @@ function getEnsOwnerClient() {
     throw new Error('ENS_OWNER_PRIVATE_KEY environment variable is not set');
   }
 
+  const rpcUrl = process.env.SEPOLIA_RPC_URL;
+
   return createWalletClient({
     account: privateKeyToAccount(privateKey as `0x${string}`),
     chain: addEnsContracts(sepolia),
-    transport: http(),
+    transport: http(rpcUrl),
   });
 }
 
