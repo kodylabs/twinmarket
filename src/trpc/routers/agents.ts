@@ -210,17 +210,17 @@ export const agentsRouter = router({
         where: eq(userTable.id, ctx.user.id),
       });
 
-      // 1. ENS registration
-      const ensResult = await registerEnsName(slug, input.walletAddress as `0x${string}`, {
-        description: input.bio,
-        url: `https://twinmarket.app/twins/${slug}`,
-        avatar: '',
-        worldVerified: dbUser?.verificationLevel ?? '',
-        worldAgentbookId: '',
-      });
-
-      // 2. AgentBook relay submission
-      const relayResult = await submitAgentBookRegistration(input.walletAddress, input.agentBookProof);
+      // 1. ENS registration + AgentBook relay in parallel (independent operations)
+      const [ensResult, relayResult] = await Promise.all([
+        registerEnsName(slug, input.walletAddress as `0x${string}`, {
+          description: input.bio,
+          url: `https://twinmarket.app/twins/${slug}`,
+          avatar: '',
+          worldVerified: dbUser?.verificationLevel ?? '',
+          worldAgentbookId: '',
+        }),
+        submitAgentBookRegistration(input.walletAddress, input.agentBookProof),
+      ]);
 
       // 3. All on-chain ops succeeded — persist to DB
       await ctx.db.transaction(async (tx) => {

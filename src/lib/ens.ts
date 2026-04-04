@@ -65,19 +65,24 @@ export async function registerEnsName(
   const publicClient = getPublicClient();
   const ensName = `${slug}.${PARENT_DOMAIN}`;
 
-  // 1. Create subname + set resolver in ONE tx via setSubnodeRecord
   const parentNode = namehash(PARENT_DOMAIN);
   const label = labelhash(slug);
 
+  // Grab nonce so we can send both TXs to the mempool simultaneously.
+  // TX1 gets nonce N, TX2 gets nonce N+1. Miner orders them correctly.
+  const nonce = await publicClient.getTransactionCount({ address: wallet.account.address });
+
+  // TX1: Create subname + set resolver
   const createTxHash = await wallet.writeContract({
     address: ENS_REGISTRY,
     abi: ensRegistryAbi,
     functionName: 'setSubnodeRecord',
     args: [parentNode, label, wallet.account.address, SEPOLIA_PUBLIC_RESOLVER, BigInt(0)],
+    nonce,
   });
-  await publicClient.waitForTransactionReceipt({ hash: createTxHash });
 
-  // 2. Set text records + address (resolver is already set)
+  // TX2: Set text records + address. Explicit gas skips eth_estimateGas
+  // (simulation would fail because TX1 isn't mined yet).
   const recordsTxHash = await setRecords(wallet, {
     name: ensName,
     resolverAddress: SEPOLIA_PUBLIC_RESOLVER,
@@ -89,8 +94,9 @@ export async function registerEnsName(
       { key: 'world.verified', value: metadata.worldVerified },
       { key: 'world.agentbook_id', value: metadata.worldAgentbookId },
     ],
+    nonce: nonce + 1,
+    gas: 1_000_000n,
   });
-  await publicClient.waitForTransactionReceipt({ hash: recordsTxHash });
 
   return {
     ensName,
