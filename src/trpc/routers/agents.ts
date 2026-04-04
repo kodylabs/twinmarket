@@ -187,7 +187,13 @@ export const agentsRouter = router({
       });
 
       if (existing) {
-        throw new TRPCError({ code: 'CONFLICT', message: 'You already have an agent' });
+        return {
+          id: existing.id,
+          slug: existing.slug,
+          walletAddress: existing.walletAddress,
+          ensName: existing.ensName,
+          agentBookTxHash: null,
+        };
       }
 
       let slug = slugify(input.name);
