@@ -98,11 +98,11 @@ export const POST = withX402(
       },
       payTo: async (ctx) => {
         const slug = extractSlug(ctx.path);
-        const { payTo } = await resolveAgentPricing(slug);
-        if (!payTo) {
-          throw new Error('Payment receiver address not found');
+        const { agentAddress } = await resolveAgentPricing(slug);
+        if (!agentAddress) {
+          throw new Error('Agent payment address not found');
         }
-        return payTo;
+        return agentAddress;
       },
     },
     description: 'AI Agent API call — digital twin expertise',
