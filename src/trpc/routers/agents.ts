@@ -259,4 +259,49 @@ export const agentsRouter = router({
         agentBookTxHash: relayResult.txHash,
       };
     }),
+
+  update: protectedProcedure
+    .input(
+      z.object({
+        systemPrompt: z.string().min(50).max(4000).optional(),
+        skills: z
+          .array(
+            z.object({
+              title: z.string().min(1),
+              content: z.string().min(1),
+            }),
+          )
+          .optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const agent = await ctx.db.query.agentTable.findFirst({
+        where: eq(agentTable.creatorId, ctx.user.id),
+      });
+
+      if (!agent) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
+      }
+
+      await ctx.db.transaction(async (tx) => {
+        if (input.systemPrompt !== undefined) {
+          await tx.update(agentTable).set({ systemPrompt: input.systemPrompt }).where(eq(agentTable.id, agent.id));
+        }
+
+        if (input.skills !== undefined) {
+          await tx.delete(agentSkillTable).where(eq(agentSkillTable.agentId, agent.id));
+          for (let i = 0; i < input.skills.length; i++) {
+            await tx.insert(agentSkillTable).values({
+              id: crypto.randomUUID(),
+              agentId: agent.id,
+              title: input.skills[i].title,
+              content: input.skills[i].content,
+              sortOrder: i,
+            });
+          }
+        }
+      });
+
+      return { success: true };
+    }),
 });

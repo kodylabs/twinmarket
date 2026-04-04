@@ -1,13 +1,32 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { Activity, Bot, DollarSign, Lock, Pencil, ShieldCheck, Sparkles, Star, TrendingUp, Zap } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  Activity,
+  Bot,
+  Check,
+  DollarSign,
+  ExternalLink,
+  Lock,
+  Pencil,
+  Plus,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Trash2,
+  TrendingUp,
+  X,
+  Zap,
+} from 'lucide-react';
+import { useState } from 'react';
 import { Bar, BarChart, XAxis } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
 import { useTRPC } from '@/trpc/providers';
 
 const MOCK_WEEKLY_CALLS = [
@@ -71,8 +90,24 @@ const revenueChartConfig: ChartConfig = {
 
 export function MyTwinDashboard() {
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const { data: agent } = useQuery(trpc.agents.mine.queryOptions());
   const { data: worldIdStatus } = useQuery(trpc.worldId.status.queryOptions());
+
+  const [editingPrompt, setEditingPrompt] = useState(false);
+  const [promptDraft, setPromptDraft] = useState('');
+  const [editingSkills, setEditingSkills] = useState(false);
+  const [skillsDraft, setSkillsDraft] = useState<{ title: string; content: string }[]>([]);
+
+  const updateMutation = useMutation(
+    trpc.agents.update.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: trpc.agents.mine.queryOptions().queryKey });
+        setEditingPrompt(false);
+        setEditingSkills(false);
+      },
+    }),
+  );
 
   if (!agent) return null;
 
@@ -105,10 +140,39 @@ export function MyTwinDashboard() {
             </div>
             <div className='space-y-2'>
               <p className='text-sm text-muted-foreground'>{agent.description}</p>
-              {agent.ensName && <span className='text-xs font-mono text-muted-foreground'>{agent.ensName}</span>}
-              {!agent.ensName && agent.walletAddress && (
-                <span className='block truncate text-xs font-mono text-muted-foreground'>{agent.walletAddress}</span>
-              )}
+              <div className='flex flex-wrap items-center gap-3'>
+                {agent.ensName && (
+                  <a
+                    href={`https://sepolia.app.ens.domains/${agent.ensName}`}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground'
+                  >
+                    {agent.ensName}
+                    <ExternalLink className='size-3' />
+                  </a>
+                )}
+                {agent.walletAddress && (
+                  <a
+                    href={`https://worldscan.org/address/${agent.walletAddress}`}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground'
+                  >
+                    {agent.walletAddress.slice(0, 6)}...{agent.walletAddress.slice(-4)}
+                    <ExternalLink className='size-3' />
+                  </a>
+                )}
+                <a
+                  href='https://worldscan.org/address/0xA23aB2712eA7BBa896930544C7d6636a96b944dA#readContract'
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground'
+                >
+                  AgentBook
+                  <ExternalLink className='size-3' />
+                </a>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -217,16 +281,53 @@ export function MyTwinDashboard() {
               System Prompt
             </CardTitle>
             <CardAction>
-              <Button variant='outline' size='sm' disabled>
-                <Pencil className='size-3' />
-                Edit
-              </Button>
+              {editingPrompt ? (
+                <div className='flex gap-1'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => setEditingPrompt(false)}
+                    disabled={updateMutation.isPending}
+                  >
+                    <X className='size-3' />
+                    Cancel
+                  </Button>
+                  <Button
+                    size='sm'
+                    onClick={() => updateMutation.mutate({ systemPrompt: promptDraft })}
+                    disabled={updateMutation.isPending}
+                  >
+                    <Check className='size-3' />
+                    Save
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => {
+                    setPromptDraft(agent.systemPrompt);
+                    setEditingPrompt(true);
+                  }}
+                >
+                  <Pencil className='size-3' />
+                  Edit
+                </Button>
+              )}
             </CardAction>
           </CardHeader>
           <CardContent>
-            <pre className='whitespace-pre-wrap rounded-md border bg-muted/50 p-4 text-sm leading-relaxed'>
-              {agent.systemPrompt}
-            </pre>
+            {editingPrompt ? (
+              <Textarea
+                value={promptDraft}
+                onChange={(e) => setPromptDraft(e.target.value)}
+                className='min-h-[200px] font-mono text-sm'
+              />
+            ) : (
+              <pre className='whitespace-pre-wrap rounded-md border bg-muted/50 p-4 text-sm leading-relaxed'>
+                {agent.systemPrompt}
+              </pre>
+            )}
           </CardContent>
         </Card>
 
@@ -237,20 +338,100 @@ export function MyTwinDashboard() {
               Skills
             </CardTitle>
             <CardAction>
-              <Button variant='outline' size='sm' disabled>
-                <Pencil className='size-3' />
-                Edit
-              </Button>
+              {editingSkills ? (
+                <div className='flex gap-1'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => setEditingSkills(false)}
+                    disabled={updateMutation.isPending}
+                  >
+                    <X className='size-3' />
+                    Cancel
+                  </Button>
+                  <Button
+                    size='sm'
+                    onClick={() => updateMutation.mutate({ skills: skillsDraft })}
+                    disabled={updateMutation.isPending}
+                  >
+                    <Check className='size-3' />
+                    Save
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => {
+                    setSkillsDraft(agent.skills.map((s) => ({ title: s.title, content: s.content })));
+                    setEditingSkills(true);
+                  }}
+                >
+                  <Pencil className='size-3' />
+                  Edit
+                </Button>
+              )}
             </CardAction>
           </CardHeader>
           <CardContent className='space-y-3'>
-            {agent.skills.length === 0 && <p className='text-sm text-muted-foreground'>No skills configured yet.</p>}
-            {agent.skills.map((skill) => (
-              <div key={skill.id} className='space-y-1 rounded-md border p-3'>
-                <p className='text-sm font-medium'>{skill.title}</p>
-                <p className='text-xs text-muted-foreground line-clamp-2'>{skill.content}</p>
-              </div>
-            ))}
+            {editingSkills ? (
+              <>
+                {skillsDraft.map((skill, i) => (
+                  <div key={i} className='space-y-2 rounded-md border p-3'>
+                    <div className='flex items-center gap-2'>
+                      <Input
+                        value={skill.title}
+                        onChange={(e) => {
+                          const next = [...skillsDraft];
+                          next[i] = { ...next[i], title: e.target.value };
+                          setSkillsDraft(next);
+                        }}
+                        placeholder='Skill title'
+                        className='text-sm'
+                      />
+                      <Button
+                        variant='ghost'
+                        size='sm'
+                        onClick={() => setSkillsDraft(skillsDraft.filter((_, j) => j !== i))}
+                      >
+                        <Trash2 className='size-3' />
+                      </Button>
+                    </div>
+                    <Textarea
+                      value={skill.content}
+                      onChange={(e) => {
+                        const next = [...skillsDraft];
+                        next[i] = { ...next[i], content: e.target.value };
+                        setSkillsDraft(next);
+                      }}
+                      placeholder='Skill content'
+                      className='min-h-[60px] text-sm'
+                    />
+                  </div>
+                ))}
+                <Button
+                  variant='outline'
+                  size='sm'
+                  className='w-full'
+                  onClick={() => setSkillsDraft([...skillsDraft, { title: '', content: '' }])}
+                >
+                  <Plus className='size-3' />
+                  Add Skill
+                </Button>
+              </>
+            ) : (
+              <>
+                {agent.skills.length === 0 && (
+                  <p className='text-sm text-muted-foreground'>No skills configured yet.</p>
+                )}
+                {agent.skills.map((skill) => (
+                  <div key={skill.id} className='space-y-1 rounded-md border p-3'>
+                    <p className='text-sm font-medium'>{skill.title}</p>
+                    <p className='text-xs text-muted-foreground line-clamp-2'>{skill.content}</p>
+                  </div>
+                ))}
+              </>
+            )}
           </CardContent>
         </Card>
 
