@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { generateAgentWallet, registerAgentOnWorldChain } from '@/lib/agentkit';
+import { generateAgentWallet, pollAgentBookSession, startAgentBookSession } from '@/lib/agentkit';
 import { agentSkillTable, agentTable, asc, count, desc, eq, sum, userTable } from '@/lib/db';
 import { registerEnsName } from '@/lib/ens';
 import { protectedProcedure, publicProcedure, router } from '@/trpc/init';
@@ -178,9 +178,7 @@ export const agentsRouter = router({
         worldAgentbookId: '',
       });
 
-      const agentKitResult = await registerAgentOnWorldChain(wallet.address);
-
-      // All on-chain ops succeeded — now persist to DB atomically
+      // ENS succeeded — persist to DB (AgentBook registration happens separately via QR scan)
       await ctx.db.transaction(async (tx) => {
         await tx.insert(agentTable).values({
           id: agentId,
@@ -213,8 +211,31 @@ export const agentsRouter = router({
         description: input.bio,
         walletAddress: wallet.address,
         ensName: ensResult.ensName,
-        agentBookId: agentKitResult.agentBookId ?? null,
         status: 'active',
       };
     }),
+
+  startAgentBookRegistration: protectedProcedure.mutation(async ({ ctx }) => {
+    const agent = await ctx.db.query.agentTable.findFirst({
+      where: eq(agentTable.creatorId, ctx.user.id),
+    });
+
+    if (!agent?.walletAddress) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'No agent found' });
+    }
+
+    return startAgentBookSession(agent.walletAddress as `0x${string}`);
+  }),
+
+  pollAgentBookRegistration: protectedProcedure.query(async ({ ctx }) => {
+    const agent = await ctx.db.query.agentTable.findFirst({
+      where: eq(agentTable.creatorId, ctx.user.id),
+    });
+
+    if (!agent?.walletAddress) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'No agent found' });
+    }
+
+    return pollAgentBookSession(agent.walletAddress as `0x${string}`);
+  }),
 });
