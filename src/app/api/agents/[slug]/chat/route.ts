@@ -1,9 +1,12 @@
+import { withX402 } from '@x402/next';
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import type { AgentWithSkills } from '@/lib/db';
 import { agentTable, db, eq, sql } from '@/lib/db';
 import { chatCompletion } from '@/lib/llm/openrouter';
-import { requirePayment } from '@/lib/x402';
+import { resolveAgentPricing } from '@/lib/price-resolver';
+import { X402_NETWORK, x402Server } from '@/lib/x402';
 
 const GLOBAL_SYSTEM_PROMPT = `
 You are a digital twin of an independent expert. You are able to answer questions and help with tasks.
@@ -22,8 +25,15 @@ function buildSystemPrompt(agent: AgentWithSkills): string {
   return `${GLOBAL_SYSTEM_PROMPT}\n\n---\n\nYour knowledge and skills:\n\n${skillsBlock}`;
 }
 
-export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+/** Extract slug from URL path: /api/agents/[slug]/chat → slug */
+function extractSlug(path: string): string {
+  const parts = path.split('/');
+  // /api/agents/solidity-expert/chat → ['', 'api', 'agents', 'solidity-expert', 'chat']
+  return parts[3] ?? '';
+}
+
+const handler = async (request: NextRequest): Promise<NextResponse> => {
+  const slug = extractSlug(request.nextUrl.pathname);
 
   // 1. Load agent + skills
   const agent = await db.query.agentTable.findFirst({
@@ -39,19 +49,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
   }
 
-  // 2. Payment gate
-  // Returns a 402 Response if payment is missing/invalid, null if good to go
-  const paymentCheck = await requirePayment(request, agent);
-  if (paymentCheck) return paymentCheck;
-
-  // 3. Validate input
+  // 2. Validate input
   const body = await request.json().catch(() => null);
   const parsed = chatInputSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Message is required' }, { status: 400 });
   }
 
-  // 4. Build system prompt and call LLM
+  // 3. Build system prompt and call LLM
   const systemPrompt = buildSystemPrompt(agent);
 
   let response: string;
@@ -62,7 +67,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     return NextResponse.json({ error: 'Failed to generate response' }, { status: 502 });
   }
 
-  // 5. Increment totalCalls (fire-and-forget)
+  // 4. Increment totalCalls (fire-and-forget)
   void db
     .update(agentTable)
     .set({ totalCalls: sql`${agentTable.totalCalls} + 1` })
@@ -70,7 +75,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     .execute()
     .catch(console.error);
 
-  // 6. Return output only — NEVER the systemPrompt or skills
+  // 5. Return output only — NEVER the systemPrompt or skills
   return NextResponse.json({
     response,
     agent: {
@@ -78,4 +83,29 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
       slug: agent.slug,
     },
   });
-}
+};
+
+export const POST = withX402(
+  handler,
+  {
+    accepts: {
+      scheme: 'exact',
+      network: X402_NETWORK,
+      price: async (ctx) => {
+        const slug = extractSlug(ctx.path);
+        const { price } = await resolveAgentPricing(slug);
+        return price ? `$${price}` : '$0';
+      },
+      payTo: async (ctx) => {
+        const slug = extractSlug(ctx.path);
+        const { payTo } = await resolveAgentPricing(slug);
+        if (!payTo) {
+          throw new Error('Payment receiver address not found');
+        }
+        return payTo;
+      },
+    },
+    description: 'AI Agent API call — digital twin expertise',
+  },
+  x402Server,
+);
