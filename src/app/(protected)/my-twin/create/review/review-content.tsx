@@ -76,6 +76,7 @@ export function ReviewContent({ name, bio, systemPrompt, skills }: ReviewContent
         nonce: nonceData.nonce,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bridge.status, bridge.result, nonceData, submitProof.mutate]);
 
   function handleMint() {
