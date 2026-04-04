@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.5.3",
+    "@circle-fin/x402-batching": "^2.0.4",
     "@ensdomains/ensjs": "^4.2.2",
     "@radix-ui/react-slot": "^1.2.4",
     "@rainbow-me/rainbowkit": "^2.2.0",
@@ -29,6 +30,9 @@
     "@trpc/tanstack-react-query": "^11.8.1",
     "@worldcoin/agentkit": "^0.1.6",
     "@worldcoin/idkit": "^4.0.11",
+    "@x402/core": "^2.9.0",
+    "@x402/evm": "^2.9.0",
+    "@x402/next": "^2.9.0",
     "better-auth": "^1.5.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

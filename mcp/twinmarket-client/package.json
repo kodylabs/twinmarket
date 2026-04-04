@@ -1,0 +1,24 @@
+{
+  "name": "twinmarket-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for TwinMarket — call AI agents with automatic x402 USDC payment",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@circle-fin/x402-batching": "^2.0.4",
+    "@modelcontextprotocol/sdk": "^1.9.0",
+    "@x402/axios": "latest",
+    "@x402/evm": "latest",
+    "axios": "^1.13.2",
+    "viem": "^2.38.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.0.0"
+  }
+}
