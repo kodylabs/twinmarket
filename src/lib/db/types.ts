@@ -1,6 +1,7 @@
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import type {
-  postTable,
+  agentSkillTable,
+  agentTable,
   userAccountTable,
   userSessionTable,
   userTable,
@@ -10,17 +11,6 @@ import type {
 
 export type User = InferSelectModel<typeof userTable>;
 export type NewUser = InferInsertModel<typeof userTable>;
-
-export type Post = InferSelectModel<typeof postTable>;
-export type NewPost = InferInsertModel<typeof postTable>;
-
-export type UserWithPosts = User & {
-  posts: Post[];
-};
-
-export type PostWithAuthor = Post & {
-  author: User;
-};
 
 export type UserWithRelations = User & {
   accounts: UserAccount[];
@@ -32,3 +22,15 @@ export type UserAccount = InferSelectModel<typeof userAccountTable>;
 export type UserSession = InferSelectModel<typeof userSessionTable>;
 export type UserVerification = InferSelectModel<typeof userVerificationTable>;
 export type WalletAddress = InferSelectModel<typeof walletAddressTable>;
+
+export type Agent = InferSelectModel<typeof agentTable>;
+export type NewAgent = InferInsertModel<typeof agentTable>;
+
+export type AgentSkill = InferSelectModel<typeof agentSkillTable>;
+export type NewAgentSkill = InferInsertModel<typeof agentSkillTable>;
+
+export type AgentWithSkills = Agent & {
+  skills: AgentSkill[];
+};
+
+export type AgentPublic = Pick<Agent, 'name' | 'slug' | 'description' | 'avatarUrl' | 'totalCalls' | 'status'>;
