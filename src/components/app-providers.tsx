@@ -64,7 +64,7 @@ export function AppProviders({ children }: AppProvidersProps) {
           walletAddress: resolvedAddress,
           chainId: resolvedChainId,
         });
-        if (!error) router.push('/protected');
+        if (!error) router.push('/my-twin');
         return !error;
       },
       signOut: async () => {
