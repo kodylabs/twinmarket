@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { generateAgentWallet, registerAgentOnWorldChain } from '@/lib/agentkit';
 import { agentSkillTable, agentTable, asc, count, desc, eq, sum, userTable } from '@/lib/db';
 import { registerEnsName } from '@/lib/ens';
+import { computePromptCommitment } from '@/lib/zk';
 import { protectedProcedure, publicProcedure, router } from '@/trpc/init';
 
 function slugify(name: string): string {
@@ -169,6 +170,8 @@ export const agentsRouter = router({
         where: eq(userTable.id, ctx.user.id),
       });
 
+      const promptCommitment = await computePromptCommitment(input.systemPrompt, input.skills);
+
       // On-chain ops first — if they fail, nothing is written to DB
       const ensResult = await registerEnsName(slug, wallet.address as `0x${string}`, {
         description: input.bio,
@@ -176,6 +179,7 @@ export const agentsRouter = router({
         avatar: '',
         worldVerified: dbUser?.verificationLevel ?? '',
         worldAgentbookId: '',
+        promptCommitment,
       });
 
       const agentKitResult = await registerAgentOnWorldChain(wallet.address);
