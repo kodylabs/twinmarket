@@ -26,7 +26,14 @@ export async function getWizardData(): Promise<WizardData> {
   const wizardCookie = jar.get(COOKIE_WIZARD);
   const promptCookie = jar.get(COOKIE_PROMPT);
 
-  const data: WizardData = wizardCookie ? JSON.parse(wizardCookie.value) : {};
+  let data: WizardData = {};
+  if (wizardCookie?.value) {
+    try {
+      data = JSON.parse(wizardCookie.value);
+    } catch {
+      data = {};
+    }
+  }
 
   if (promptCookie) {
     data.systemPrompt = promptCookie.value;
