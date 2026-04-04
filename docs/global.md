@@ -30,7 +30,7 @@ Important:
 We do not expose or leak the underlying skills. We only return the computed output. This ensures that creators can safely monetize their expertise without losing their intellectual property.
 
 Monetization:
-	•	Each request is paid per usage
+	•	Each request is twinmarket per usage
 	•	Pricing includes:
 	•	Base cost of the agent (based on reputation/demand)
 	•	AI token usage

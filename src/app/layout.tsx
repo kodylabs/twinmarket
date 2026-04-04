@@ -18,10 +18,10 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: {
-    template: '%s | paid',
-    default: 'Home | paid',
+    template: '%s | twinmarket',
+    default: 'Home | twinmarket',
   },
-  description: 'paid - Initialized with https://github.com/plvo/create-faster',
+  description: 'twinmarket - Initialized with https://github.com/plvo/create-faster',
 };
 
 export default function RootLayout({

@@ -5,7 +5,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 export function Header() {
   return (
     <header className='flex h-14 items-center justify-between border-b px-6'>
-      <h2 className='text-lg font-bold'>paid</h2>
+      <h2 className='text-lg font-bold'>twinmarket</h2>
       <ConnectButton />
     </header>
   );

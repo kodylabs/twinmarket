@@ -1,31 +1,31 @@
 services:
   postgres:
     image: postgres:17
-    container_name: postgres-paid
+    container_name: postgres-twinmarket
     restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: postgres-paid
+      POSTGRES_DB: postgres-twinmarket
     ports:
       - "5666:5432"
     volumes:
-      - postgres-paid-data:/var/lib/postgresql/data
+      - postgres-twinmarket-data:/var/lib/postgresql/data
     networks:
-      - postgres-paid-network
+      - postgres-twinmarket-network
     command: postgres -c 'max_connections=100'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres-paid"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres-twinmarket"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
 
 volumes:
-  postgres-paid-data:
+  postgres-twinmarket-data:
     driver: local
 
 networks:
-  postgres-paid-network:
-    name: postgres-paid-network
+  postgres-twinmarket-network:
+    name: postgres-twinmarket-network
     driver: bridge

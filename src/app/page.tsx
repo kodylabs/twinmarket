@@ -4,7 +4,7 @@ export default function HomePage() {
   return (
     <div className='flex min-h-[calc(100vh-3.5rem)] items-center justify-center'>
       <div className='max-w-md space-y-6 text-center'>
-        <h1 className='text-4xl font-bold tracking-tight'>paid</h1>
+        <h1 className='text-4xl font-bold tracking-tight'>twinmarket</h1>
         <p className='text-lg text-muted-foreground'>Connect your wallet to get started</p>
 
         <div className='space-y-3 rounded-lg border bg-card p-6 text-left text-sm'>

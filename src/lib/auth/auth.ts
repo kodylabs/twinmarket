@@ -26,7 +26,7 @@ export const auth = betterAuth({
     nextCookies(),
     siwe({
       domain: new URL(process.env.BETTER_AUTH_URL ?? 'http://localhost:3000').host,
-      emailDomainName: 'paid.app',
+      emailDomainName: 'twinmarket.app',
       getNonce: async () => generateRandomString(32, 'a-z', 'A-Z', '0-9'),
       verifyMessage: async ({ message, signature, address }) => {
         try {

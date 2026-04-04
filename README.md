@@ -1,4 +1,4 @@
-# paid
+# twinmarket
 
 This project was initialized with [create-faster](https://github.com/plvo/create-faster), a modern CLI scaffolding tool for production-ready full-stack applications with curated templates and modular architecture.
 
