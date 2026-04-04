@@ -1,18 +1,17 @@
 'use client';
 
-import { useMutation } from '@tanstack/react-query';
 import { Check, Globe, Loader2, QrCode, Shield } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { type BridgeResult, useAgentBookBridge } from '@/hooks/use-agentbook-bridge';
+import { useAgentBookBridge } from '@/hooks/use-agentbook-bridge';
 import type { WizardSkill } from '@/lib/wizard-storage';
-import { useTRPC } from '@/trpc/providers';
+import { trpc } from '@/trpc/client';
 import { clearWizardAction } from '../actions';
 
 function slugify(name: string): string {
@@ -33,68 +32,46 @@ type Phase = 'review' | 'preparing' | 'scanning' | 'creating' | 'done';
 
 export function ReviewContent({ name, bio, systemPrompt, skills }: ReviewContentProps) {
   const router = useRouter();
-  const trpc = useTRPC();
   const slug = slugify(name);
   const [phase, setPhase] = useState<Phase>('review');
-  const [walletData, setWalletData] = useState<{ walletAddress: string; privateKey: string; nonce: string } | null>(
-    null,
-  );
-
+  const [error, setError] = useState<string | null>(null);
   const bridge = useAgentBookBridge();
 
-  const prepareCreate = useMutation(
-    trpc.agents.prepareCreate.mutationOptions({
-      onSuccess: (data) => {
-        setWalletData(data);
-        bridge.start(data.walletAddress, data.nonce);
-        setPhase('scanning');
-      },
-    }),
-  );
+  async function handleMint() {
+    try {
+      setError(null);
 
-  const createAgent = useMutation(
-    trpc.agents.create.mutationOptions({
-      onSuccess: async () => {
-        setPhase('done');
-        await clearWizardAction();
-        router.push('/my-twin');
-      },
-    }),
-  );
+      setPhase('preparing');
+      const wallet = await trpc.agents.prepareCreate.mutate();
 
-  const submitAll = useCallback(
-    (proof: BridgeResult) => {
-      if (!walletData) return;
+      setPhase('scanning');
+      const proof = await bridge.start(wallet.walletAddress, wallet.nonce);
+
       setPhase('creating');
-      createAgent.mutate({
+      await trpc.agents.create.mutate({
         name,
         bio,
         systemPrompt,
         skills,
-        walletAddress: walletData.walletAddress,
-        privateKey: walletData.privateKey,
+        walletAddress: wallet.walletAddress,
+        privateKey: wallet.privateKey,
         agentBookProof: {
           merkleRoot: proof.merkleRoot,
           nullifierHash: proof.nullifierHash,
           proof: proof.proof,
-          nonce: walletData.nonce,
+          nonce: wallet.nonce,
         },
       });
-    },
-    [walletData, name, bio, systemPrompt, skills, createAgent],
-  );
 
-  useEffect(() => {
-    if (bridge.status !== 'verified' || !bridge.result || !walletData) return;
-    submitAll(bridge.result);
-  }, [bridge.status, bridge.result, walletData, submitAll]);
-
-  function handleMint() {
-    setPhase('preparing');
-    prepareCreate.mutate();
+      setPhase('done');
+      await clearWizardAction();
+      router.push('/my-twin');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+      if (phase === 'scanning') return; // bridge error already shown
+      setPhase('review');
+    }
   }
-
-  const error = prepareCreate.error?.message || createAgent.error?.message || bridge.error;
 
   return (
     <div className='space-y-6'>
@@ -138,7 +115,7 @@ export function ReviewContent({ name, bio, systemPrompt, skills }: ReviewContent
 
       <Separator />
 
-      {/* Info card — always visible before scanning */}
+      {/* Info card — visible before scanning */}
       {(phase === 'review' || phase === 'preparing') && (
         <Card className='border-muted'>
           <CardContent className='flex items-start gap-3 pt-6'>
@@ -154,7 +131,7 @@ export function ReviewContent({ name, bio, systemPrompt, skills }: ReviewContent
         </Card>
       )}
 
-      {/* QR code scanning phase */}
+      {/* QR code scanning */}
       {phase === 'scanning' && bridge.connectorURI && (
         <Card className='border-primary/20 bg-primary/5'>
           <CardContent className='flex flex-col items-center gap-4 pt-6'>
@@ -172,7 +149,7 @@ export function ReviewContent({ name, bio, systemPrompt, skills }: ReviewContent
         </Card>
       )}
 
-      {/* Creating — all on-chain ops happening */}
+      {/* Creating */}
       {phase === 'creating' && (
         <Card className='border-primary/20 bg-primary/5'>
           <CardContent className='flex items-center gap-3 pt-6'>
@@ -197,9 +174,9 @@ export function ReviewContent({ name, bio, systemPrompt, skills }: ReviewContent
         </Card>
       )}
 
-      {error && (
+      {(error || bridge.error) && (
         <p className='rounded-md border border-destructive/50 bg-destructive/10 px-4 py-2 text-sm text-destructive'>
-          {error}
+          {error || bridge.error}
         </p>
       )}
 
@@ -214,10 +191,10 @@ export function ReviewContent({ name, bio, systemPrompt, skills }: ReviewContent
             Mint My Twin
           </Button>
         )}
-        {phase === 'preparing' && (
+        {(phase === 'preparing' || phase === 'creating') && (
           <Button disabled>
             <Loader2 className='size-4 animate-spin' />
-            Preparing...
+            {phase === 'preparing' ? 'Preparing...' : 'Creating...'}
           </Button>
         )}
       </div>
