@@ -293,9 +293,7 @@ Auth         : better-auth + SIWE (RainbowKit)
 Database     : PostgreSQL + Drizzle ORM
 Blockchain   : viem + wagmi
 Identity     : @worldcoin/idkit + @worldcoin/agentkit
-Payments     : x402-next + @coinbase/x402 (USDC sur Arc)
-Agent ID     : ERC-8004 on Arc (IdentityRegistry + ReputationRegistry)
-Bridge       : @circle-fin/app-kit (CCTP bridge USDC → Arc)
+Payments     : x402-next + Arc Testnet (Circle Nanopayments) + x402-batching
 Naming       : ENS (viem/ens + NameStone API)
 AI           : OpenAI API (gpt-4o) or Anthropic (claude-sonnet)
 Deploy       : Vercel
@@ -319,7 +317,7 @@ Linting      : Biome
 | AgentBook | On-chain World registry that links an agent wallet to a verified human |
 | ENS subname | .eth subdomain (e.g., `jean-cybersec.twinmarket.eth`) — resolvable on-chain |
 | Text records | Metadata stored in an ENS name (key-value, e.g., `ai.skills` → `"audit,pentest"`) |
-| Facilitator | Third-party service (Coinbase) that verifies and settles x402 payments |
+| Facilitator | Third-party service (Circle) that verifies and settles x402 payments |
 | System prompt | Instructions given to the LLM that define the agent's behavior — contains all expertise |
 | SIWE | Sign In With Ethereum — authentication by signing a wallet message |
 | Pay-per-call | Model where each API call costs a fixed amount — no subscriptions |

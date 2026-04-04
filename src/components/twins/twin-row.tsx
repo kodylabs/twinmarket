@@ -2,7 +2,7 @@ import { ChevronRight, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import type { TwinCardData } from '@/lib/mock-data';
+import type { TwinCardData } from '@/types/twin';
 
 export function TwinRow({ twin }: { twin: TwinCardData }) {
   return (
@@ -16,14 +16,14 @@ export function TwinRow({ twin }: { twin: TwinCardData }) {
 
       <div className='min-w-0 flex-1'>
         <p className='font-semibold'>{twin.name}</p>
-        <p className='text-xs text-muted-foreground'>by {twin.creatorAddress}</p>
+        <p className='text-xs text-muted-foreground'>by {twin.ensName ?? 'Unknown'}</p>
       </div>
 
       <p className='hidden flex-1 text-sm text-muted-foreground md:block'>{twin.description}</p>
 
       <div className='text-right text-sm'>
         <span className='text-xs uppercase text-muted-foreground'>Rate</span>
-        <p className='font-medium'>{twin.priceEth} ETH</p>
+        <p className='font-medium'>{twin.pricePerCall}</p>
       </div>
 
       {twin.verified ? (
