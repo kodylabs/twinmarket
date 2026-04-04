@@ -15,6 +15,9 @@ export const userTable = pgTable('users', {
   phone: varchar('phone', { length: 255 }),
   firstName: varchar('first_name', { length: 255 }),
   lastName: varchar('last_name', { length: 255 }),
+  nullifierHash: varchar('nullifier_hash', { length: 255 }).unique(),
+  verificationLevel: varchar('verification_level', { length: 20 }),
+  verifiedAt: timestamp('verified_at'),
   ...timeColumns,
 });
 

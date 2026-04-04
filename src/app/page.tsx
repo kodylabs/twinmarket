@@ -1,27 +1,13 @@
-import Link from 'next/link';
-
 export default function HomePage() {
   return (
     <div className='flex min-h-[calc(100vh-3.5rem)] items-center justify-center'>
       <div className='max-w-md space-y-6 text-center'>
         <h1 className='text-4xl font-bold tracking-tight'>twinmarket</h1>
-        <p className='text-lg text-muted-foreground'>Connect your wallet to get started</p>
+        <p className='text-lg text-muted-foreground'>Monetize your expertise through your AI digital twin.</p>
 
         <div className='space-y-3 rounded-lg border bg-card p-6 text-left text-sm'>
-          <p className='text-muted-foreground'>
-            This page is <span className='font-medium text-foreground'>public</span>. Anyone can see it without
-            connecting a wallet.
-          </p>
-          <p className='text-muted-foreground'>
-            The{' '}
-            <Link
-              href='/protected'
-              className='font-medium text-foreground underline underline-offset-4 hover:text-primary'
-            >
-              dashboard
-            </Link>{' '}
-            is protected by SIWE authentication &mdash; you need to sign in with your wallet to access it.
-          </p>
+          <p className='text-muted-foreground'>Connect your wallet to create your twin and start earning.</p>
+          <p className='text-muted-foreground'>One human, one twin &mdash; verified with World ID.</p>
         </div>
       </div>
     </div>
