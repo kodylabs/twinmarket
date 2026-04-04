@@ -41,32 +41,28 @@ function getPublicClient() {
   });
 }
 
-async function waitForTx(hash: Hash) {
-  const client = getPublicClient();
-  await client.waitForTransactionReceipt({ hash });
-}
-
 export async function registerEnsName(
   slug: string,
   agentAddress: `0x${string}`,
   metadata: Omit<AgentRecordsParams, 'ensName' | 'ownerAddress'>,
 ): Promise<{ ensName: string; txHashes: Hash[] }> {
   const wallet = getEnsOwnerClient();
+  const publicClient = getPublicClient();
   const ensName = `${slug}.${PARENT_DOMAIN}`;
 
+  // Send all 3 txs sequentially but don't wait for receipts between them.
+  // Viem auto-increments nonces so they're mined in order.
   const subnameTxHash = await createSubname(wallet, {
     name: ensName,
     owner: wallet.account.address,
     contract: 'registry',
   });
-  await waitForTx(subnameTxHash);
 
   const resolverTxHash = await setResolver(wallet, {
     name: ensName,
     contract: 'registry',
     resolverAddress: SEPOLIA_PUBLIC_RESOLVER,
   });
-  await waitForTx(resolverTxHash);
 
   const recordsTxHash = await setRecords(wallet, {
     name: ensName,
@@ -80,7 +76,9 @@ export async function registerEnsName(
       { key: 'world.agentbook_id', value: metadata.worldAgentbookId },
     ],
   });
-  await waitForTx(recordsTxHash);
+
+  // Wait only for the last tx — all previous txs are guaranteed mined by then
+  await publicClient.waitForTransactionReceipt({ hash: recordsTxHash });
 
   return {
     ensName,
