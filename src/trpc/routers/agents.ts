@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { generateAgentWallet, pollAgentBookSession, startAgentBookSession } from '@/lib/agentkit';
+import { generateAgentWallet, getAgentBookNonce, submitAgentBookRegistration } from '@/lib/agentkit';
 import { agentSkillTable, agentTable, asc, count, desc, eq, sum, userTable } from '@/lib/db';
 import { registerEnsName } from '@/lib/ens';
 import { protectedProcedure, publicProcedure, router } from '@/trpc/init';
@@ -215,7 +215,7 @@ export const agentsRouter = router({
       };
     }),
 
-  startAgentBookRegistration: protectedProcedure.mutation(async ({ ctx }) => {
+  agentBookNonce: protectedProcedure.query(async ({ ctx }) => {
     const agent = await ctx.db.query.agentTable.findFirst({
       where: eq(agentTable.creatorId, ctx.user.id),
     });
@@ -224,18 +224,28 @@ export const agentsRouter = router({
       throw new TRPCError({ code: 'NOT_FOUND', message: 'No agent found' });
     }
 
-    return startAgentBookSession(agent.walletAddress as `0x${string}`);
+    const nonce = await getAgentBookNonce(agent.walletAddress as `0x${string}`);
+    return { walletAddress: agent.walletAddress, nonce };
   }),
 
-  pollAgentBookRegistration: protectedProcedure.query(async ({ ctx }) => {
-    const agent = await ctx.db.query.agentTable.findFirst({
-      where: eq(agentTable.creatorId, ctx.user.id),
-    });
+  submitAgentBookProof: protectedProcedure
+    .input(
+      z.object({
+        merkleRoot: z.string(),
+        nullifierHash: z.string(),
+        proof: z.string(),
+        nonce: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const agent = await ctx.db.query.agentTable.findFirst({
+        where: eq(agentTable.creatorId, ctx.user.id),
+      });
 
-    if (!agent?.walletAddress) {
-      throw new TRPCError({ code: 'NOT_FOUND', message: 'No agent found' });
-    }
+      if (!agent?.walletAddress) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'No agent found' });
+      }
 
-    return pollAgentBookSession(agent.walletAddress as `0x${string}`);
-  }),
+      return submitAgentBookRegistration(agent.walletAddress, input);
+    }),
 });

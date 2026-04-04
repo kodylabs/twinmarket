@@ -5,11 +5,12 @@ import { Check, Globe, Loader2, QrCode } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { useAgentBookBridge } from '@/hooks/use-agentbook-bridge';
 import type { WizardSkill } from '@/lib/wizard-storage';
 import { useTRPC } from '@/trpc/providers';
 import { clearWizardAction } from '../actions';
@@ -28,71 +29,70 @@ interface ReviewContentProps {
   skills: WizardSkill[];
 }
 
-type Phase = 'review' | 'minting' | 'agentbook' | 'polling' | 'done';
+type Phase = 'review' | 'minting' | 'agentbook' | 'scanning' | 'submitting' | 'done';
 
 export function ReviewContent({ name, bio, systemPrompt, skills }: ReviewContentProps) {
   const router = useRouter();
   const trpc = useTRPC();
   const slug = slugify(name);
   const [phase, setPhase] = useState<Phase>('review');
-  const [connectorURI, setConnectorURI] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [mintError, setMintError] = useState<string | null>(null);
+
+  const bridge = useAgentBookBridge();
+
+  const { data: nonceData } = useQuery({
+    ...trpc.agents.agentBookNonce.queryOptions(),
+    enabled: phase === 'agentbook' || phase === 'scanning',
+  });
 
   const createAgent = useMutation(
     trpc.agents.create.mutationOptions({
       onSuccess: () => setPhase('agentbook'),
       onError: (err) => {
-        setError(err.message);
+        setMintError(err.message);
         setPhase('review');
       },
     }),
   );
 
-  const startRegistration = useMutation(
-    trpc.agents.startAgentBookRegistration.mutationOptions({
-      onSuccess: (data) => {
-        setConnectorURI(data.connectorURI);
-        setPhase('polling');
+  const submitProof = useMutation(
+    trpc.agents.submitAgentBookProof.mutationOptions({
+      onSuccess: async () => {
+        setPhase('done');
+        await clearWizardAction();
+        router.push('/my-twin');
       },
-      onError: (err) => setError(`AgentBook session failed: ${err.message}`),
     }),
   );
 
-  const { data: pollResult } = useQuery({
-    ...trpc.agents.pollAgentBookRegistration.queryOptions(),
-    enabled: phase === 'polling',
-    refetchInterval: 2000,
-  });
-
-  const finishAndRedirect = useCallback(async () => {
-    await clearWizardAction();
-    router.push('/my-twin');
-  }, [router]);
-
+  // When bridge verification completes, submit proof to relay
   useEffect(() => {
-    if (!pollResult || phase !== 'polling') return;
-
-    if (pollResult.status === 'completed') {
-      setPhase('done');
-      finishAndRedirect();
-    } else if (pollResult.status === 'error') {
-      setError(`AgentBook: ${pollResult.message}`);
+    if (bridge.status === 'verified' && bridge.result && nonceData) {
+      setPhase('submitting');
+      submitProof.mutate({
+        merkleRoot: bridge.result.merkleRoot,
+        nullifierHash: bridge.result.nullifierHash,
+        proof: bridge.result.proof,
+        nonce: nonceData.nonce,
+      });
     }
-  }, [pollResult, phase, finishAndRedirect]);
+  }, [bridge.status, bridge.result, nonceData, submitProof.mutate]);
 
   function handleMint() {
-    setError(null);
+    setMintError(null);
     setPhase('minting');
     createAgent.mutate({ name, bio, systemPrompt, skills });
   }
 
-  function handleStartAgentBook() {
-    setError(null);
-    startRegistration.mutate();
+  function handleShowQR() {
+    if (!nonceData) return;
+    bridge.start(nonceData.walletAddress, nonceData.nonce);
+    setPhase('scanning');
   }
 
-  function handleSkip() {
-    finishAndRedirect();
+  async function handleSkip() {
+    await clearWizardAction();
+    router.push('/my-twin');
   }
 
   return (
@@ -137,7 +137,7 @@ export function ReviewContent({ name, bio, systemPrompt, skills }: ReviewContent
 
       <Separator />
 
-      {/* AgentBook registration step */}
+      {/* AgentBook registration — show after creation */}
       {phase === 'agentbook' && (
         <Card className='border-primary/20 bg-primary/5'>
           <CardHeader>
@@ -155,8 +155,8 @@ export function ReviewContent({ name, bio, systemPrompt, skills }: ReviewContent
               Scan with World App to prove your agent is human-backed. This registers it on-chain for discoverability.
             </p>
             <div className='flex gap-2'>
-              <Button onClick={handleStartAgentBook} disabled={startRegistration.isPending}>
-                {startRegistration.isPending && <Loader2 className='size-4 animate-spin' />}
+              <Button onClick={handleShowQR} disabled={!nonceData || bridge.status === 'connecting'}>
+                {bridge.status === 'connecting' && <Loader2 className='size-4 animate-spin' />}
                 <QrCode className='size-4' />
                 Show QR Code
               </Button>
@@ -168,8 +168,8 @@ export function ReviewContent({ name, bio, systemPrompt, skills }: ReviewContent
         </Card>
       )}
 
-      {/* QR code display + polling */}
-      {phase === 'polling' && connectorURI && (
+      {/* QR code + waiting */}
+      {phase === 'scanning' && bridge.connectorURI && (
         <Card className='border-primary/20 bg-primary/5'>
           <CardHeader>
             <CardTitle className='flex items-center gap-2 text-base'>
@@ -179,7 +179,7 @@ export function ReviewContent({ name, bio, systemPrompt, skills }: ReviewContent
           </CardHeader>
           <CardContent className='flex flex-col items-center gap-4'>
             <div className='rounded-lg bg-white p-4'>
-              <QRCodeSVG value={connectorURI} size={200} />
+              <QRCodeSVG value={bridge.connectorURI} size={200} />
             </div>
             <div className='flex items-center gap-2 text-sm text-muted-foreground'>
               <Loader2 className='size-4 animate-spin' />
@@ -192,6 +192,14 @@ export function ReviewContent({ name, bio, systemPrompt, skills }: ReviewContent
         </Card>
       )}
 
+      {/* Submitting to relay */}
+      {phase === 'submitting' && (
+        <div className='flex items-center gap-2 rounded-md border p-4'>
+          <Loader2 className='size-4 animate-spin' />
+          <p className='text-sm'>Registering on WorldChain...</p>
+        </div>
+      )}
+
       {/* Done */}
       {phase === 'done' && (
         <div className='flex items-center gap-2 rounded-md border border-green-500/20 bg-green-500/5 p-4'>
@@ -200,9 +208,20 @@ export function ReviewContent({ name, bio, systemPrompt, skills }: ReviewContent
         </div>
       )}
 
-      {error && (
+      {/* Errors */}
+      {mintError && (
         <p className='rounded-md border border-destructive/50 bg-destructive/10 px-4 py-2 text-sm text-destructive'>
-          {error}
+          {mintError}
+        </p>
+      )}
+      {bridge.error && (
+        <p className='rounded-md border border-destructive/50 bg-destructive/10 px-4 py-2 text-sm text-destructive'>
+          AgentBook: {bridge.error}
+        </p>
+      )}
+      {submitProof.error && (
+        <p className='rounded-md border border-destructive/50 bg-destructive/10 px-4 py-2 text-sm text-destructive'>
+          Relay: {submitProof.error.message}
         </p>
       )}
 

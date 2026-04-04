@@ -1,7 +1,5 @@
 import 'server-only';
 
-import { createWorldBridgeStore } from '@worldcoin/idkit-core';
-import { solidityEncode } from '@worldcoin/idkit-core/hashing';
 import { createPublicClient, decodeAbiParameters, http } from 'viem';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { worldchain } from 'viem/chains';
@@ -17,8 +15,6 @@ const AGENT_BOOK_ABI = [
   },
 ] as const;
 
-const APP_ID = 'app_a7c3e2b6b83927251a0db5345bd7146a';
-const ACTION = 'agentbook-registration';
 const RELAY_URL = 'https://x402-worldchain.vercel.app';
 
 export function generateAgentWallet() {
@@ -31,38 +27,15 @@ function getWorldChainClient() {
   return createPublicClient({ chain: worldchain, transport: http() });
 }
 
-async function getNextNonce(agentAddress: `0x${string}`): Promise<bigint> {
+export async function getAgentBookNonce(agentAddress: `0x${string}`): Promise<string> {
   const client = getWorldChainClient();
-  return client.readContract({
+  const nonce = await client.readContract({
     address: AGENT_BOOK_CONTRACT,
     abi: AGENT_BOOK_ABI,
     functionName: 'getNextNonce',
     args: [agentAddress],
   });
-}
-
-// Active bridge sessions keyed by agent address
-const bridgeSessions = new Map<string, ReturnType<typeof createWorldBridgeStore>>();
-
-export async function startAgentBookSession(agentAddress: `0x${string}`) {
-  const nonce = await getNextNonce(agentAddress);
-  const signal = solidityEncode(['address', 'uint256'], [agentAddress, nonce]);
-
-  const worldID = createWorldBridgeStore();
-  await worldID.getState().createClient({
-    app_id: APP_ID,
-    action: ACTION,
-    signal,
-  });
-
-  const connectorURI = worldID.getState().connectorURI;
-  if (!connectorURI) {
-    throw new Error('Failed to create bridge session');
-  }
-
-  bridgeSessions.set(agentAddress, worldID);
-
-  return { connectorURI, nonce: nonce.toString() };
+  return nonce.toString();
 }
 
 function normalizeProof(rawProof: string): string[] | null {
@@ -82,47 +55,30 @@ function normalizeProof(rawProof: string): string[] | null {
   }
 }
 
-export type PollResult =
-  | { status: 'pending' }
-  | { status: 'completed'; txHash?: string }
-  | { status: 'error'; message: string };
+interface AgentBookProof {
+  merkleRoot: string;
+  nullifierHash: string;
+  proof: string;
+  nonce: string;
+}
 
-export async function pollAgentBookSession(agentAddress: `0x${string}`): Promise<PollResult> {
-  const worldID = bridgeSessions.get(agentAddress);
-  if (!worldID) {
-    return { status: 'error', message: 'No active session' };
-  }
-
-  await worldID.getState().pollForUpdates();
-  const { result, errorCode } = worldID.getState();
-
-  if (errorCode) {
-    bridgeSessions.delete(agentAddress);
-    return { status: 'error', message: errorCode };
-  }
-
-  if (!result) {
-    return { status: 'pending' };
-  }
-
-  // Verification completed — submit to relay
-  bridgeSessions.delete(agentAddress);
-
-  const proof = normalizeProof(result.proof);
+export async function submitAgentBookRegistration(
+  agentAddress: string,
+  worldIdProof: AgentBookProof,
+): Promise<{ txHash?: string }> {
+  const proof = normalizeProof(worldIdProof.proof);
   if (!proof) {
-    return { status: 'error', message: 'Invalid proof format' };
+    throw new Error('Invalid proof format');
   }
-
-  const nonce = await getNextNonce(agentAddress);
 
   const response = await fetch(`${RELAY_URL}/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       agent: agentAddress,
-      root: result.merkle_root,
-      nonce: nonce.toString(),
-      nullifierHash: result.nullifier_hash,
+      root: worldIdProof.merkleRoot,
+      nonce: worldIdProof.nonce,
+      nullifierHash: worldIdProof.nullifierHash,
       proof,
       contract: AGENT_BOOK_CONTRACT,
     }),
@@ -130,9 +86,8 @@ export async function pollAgentBookSession(agentAddress: `0x${string}`): Promise
 
   if (!response.ok) {
     const body = await response.text();
-    return { status: 'error', message: `Relay failed (${response.status}): ${body}` };
+    throw new Error(`Relay failed (${response.status}): ${body}`);
   }
 
-  const relayResult = (await response.json()) as { txHash?: string };
-  return { status: 'completed', txHash: relayResult.txHash };
+  return response.json();
 }
