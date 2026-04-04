@@ -13,6 +13,7 @@ import { useTRPC } from '@/trpc/providers';
 
 const NAV_LINKS = [
   { href: '/', label: 'Home', protected: false },
+  { href: '/twins', label: 'Marketplace', protected: false },
   { href: '/my-twin', label: 'My Twin', protected: true },
   { href: '/profile', label: 'Profile', protected: true },
 ] as const;
