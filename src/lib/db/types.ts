@@ -33,4 +33,7 @@ export type AgentWithSkills = Agent & {
   skills: AgentSkill[];
 };
 
-export type AgentPublic = Pick<Agent, 'name' | 'slug' | 'description' | 'avatarUrl' | 'totalCalls' | 'status'>;
+export type AgentPublic = Pick<
+  Agent,
+  'name' | 'slug' | 'description' | 'avatarUrl' | 'totalCalls' | 'status' | 'ensName' | 'walletAddress' | 'pricePerCall'
+>;

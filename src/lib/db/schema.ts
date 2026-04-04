@@ -112,9 +112,14 @@ export const agentTable = pgTable('agents', {
   systemPrompt: text('system_prompt').notNull(),
   creatorId: varchar('creator_id', { length: 255 })
     .notNull()
+    .unique()
     .references(() => userTable.id, { onDelete: 'cascade' }),
   totalCalls: integer('total_calls').notNull().default(0),
   status: varchar('status', { length: 20 }).notNull().default('draft'),
+  walletAddress: varchar('wallet_address', { length: 42 }),
+  ensName: varchar('ens_name', { length: 255 }),
+  privateKey: text('private_key'),
+  pricePerCall: varchar('price_per_call', { length: 10 }).notNull().default('$0.01'),
   ...timeColumns,
 });
 
