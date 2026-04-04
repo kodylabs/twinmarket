@@ -15,6 +15,7 @@ type AgentRecordsParams = {
   avatar: string;
   worldVerified: string;
   worldAgentbookId: string;
+  promptCommitment: string;
 };
 
 function getEnsOwnerClient() {
@@ -62,6 +63,7 @@ export async function registerEnsName(
       { key: 'avatar', value: metadata.avatar },
       { key: 'world.verified', value: metadata.worldVerified },
       { key: 'world.agentbook_id', value: metadata.worldAgentbookId },
+      { key: 'prompt.zkcommit', value: metadata.promptCommitment },
     ],
   });
 
