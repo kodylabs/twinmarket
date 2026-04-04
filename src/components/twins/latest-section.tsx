@@ -10,10 +10,10 @@ export function LatestSection() {
   const { data: agents = [] } = useQuery(trpc.agents.latest.queryOptions());
 
   return (
-    <section className='container mx-auto max-w-5xl px-6'>
-      <div>
-        <h2 className='text-xl font-bold'>New Arrivals</h2>
-        <p className='text-sm text-muted-foreground'>Freshly minted twins joining the ecosystem.</p>
+    <section className='py-12 px-8 max-w-7xl mx-auto'>
+      <div className='mb-8'>
+        <h2 className='text-2xl font-bold font-headline tracking-tight'>New Arrivals</h2>
+        <p className='text-on-surface-variant text-sm mt-1'>Freshly minted twins joining the ecosystem.</p>
       </div>
       <div className='mt-6 space-y-3'>
         {agents.map((agent) => (

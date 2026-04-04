@@ -62,46 +62,52 @@ export function Header() {
   const isAuthenticated = !!session;
 
   return (
-    <header className='sticky top-0 z-50 flex h-14 items-center border-b bg-background/80 backdrop-blur-md px-6'>
-      <Link href='/' className='text-lg font-bold tracking-tight'>
-        twinmarket
-      </Link>
+    <header className='fixed top-0 z-50 w-full bg-[#0f131d]/70 backdrop-blur-xl shadow-[0_0_32px_rgba(223,226,241,0.04)] h-16 flex justify-between items-center px-8 border-none'>
+      <div className='flex items-center gap-8'>
+        <Link href='/' className='text-xl font-bold tracking-tighter text-[#dfe2f1] font-headline'>
+          twinmarket
+        </Link>
 
-      <nav className='ml-8 flex items-center gap-1'>
-        {NAV_LINKS.map((link) => {
-          const isActive = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href);
-          const isDisabled = link.protected && !isAuthenticated;
+        <nav className='hidden md:flex items-center gap-6'>
+          {NAV_LINKS.map((link) => {
+            const isActive = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href);
+            const isDisabled = link.protected && !isAuthenticated;
 
-          if (isDisabled) {
+            if (isDisabled) {
+              return (
+                <Tooltip key={link.href}>
+                  <TooltipTrigger asChild>
+                    <span className='cursor-not-allowed text-[#c3c6d7]/50 font-headline tracking-tight headline-sm'>
+                      {link.label}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>You must be connected</TooltipContent>
+                </Tooltip>
+              );
+            }
+
             return (
-              <Tooltip key={link.href}>
-                <TooltipTrigger asChild>
-                  <span className='cursor-not-allowed rounded-md px-3 py-1.5 text-sm text-muted-foreground/50'>
-                    {link.label}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>You must be connected</TooltipContent>
-              </Tooltip>
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  'transition-colors font-headline tracking-tight headline-sm',
+                  isActive ? 'text-[#b4c5ff] border-b-2 border-[#2563eb] pb-1' : 'text-[#c3c6d7] hover:text-[#dfe2f1]',
+                )}
+              >
+                {link.label}
+              </Link>
             );
-          }
+          })}
+        </nav>
+      </div>
 
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                'rounded-md px-3 py-1.5 text-sm transition-colors hover:bg-accent hover:text-accent-foreground',
-                isActive ? 'bg-accent font-medium text-accent-foreground' : 'text-muted-foreground',
-              )}
-            >
-              {link.label}
-            </Link>
-          );
-        })}
-      </nav>
-
-      <div className='ml-auto flex items-center gap-3'>
-        {isAuthenticated && <VerificationBadge />}
+      <div className='flex items-center gap-4 ml-auto'>
+        {isAuthenticated && (
+          <div className='hidden sm:flex'>
+            <VerificationBadge />
+          </div>
+        )}
 
         <ConnectButton.Custom>
           {({ account, chain, openAccountModal, openChainModal, openConnectModal, authenticationStatus, mounted }) => {
@@ -110,7 +116,7 @@ export function Header() {
               ready && account && chain && (!authenticationStatus || authenticationStatus === 'authenticated');
 
             if (!ready) {
-              return <div className='h-8 w-28 animate-pulse rounded-md bg-muted' aria-hidden='true' />;
+              return <div className='h-8 w-28 animate-pulse rounded-xl bg-surface-container-high' aria-hidden='true' />;
             }
 
             if (!connected) {
@@ -118,7 +124,7 @@ export function Header() {
                 <button
                   type='button'
                   onClick={openConnectModal}
-                  className='inline-flex h-8 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90'
+                  className='cta-gradient text-on-primary px-6 py-2 rounded-xl font-medium text-sm hover:opacity-90 transition-opacity'
                 >
                   Connect Wallet
                 </button>
@@ -130,7 +136,7 @@ export function Header() {
                 <button
                   type='button'
                   onClick={openChainModal}
-                  className='inline-flex h-8 items-center rounded-md bg-destructive px-4 text-sm font-medium text-white hover:bg-destructive/90'
+                  className='bg-error text-on-error px-4 py-1.5 rounded-xl font-medium text-sm hover:opacity-90 transition-opacity'
                 >
                   Wrong network
                 </button>
@@ -141,7 +147,7 @@ export function Header() {
               <button
                 type='button'
                 onClick={openAccountModal}
-                className='inline-flex h-8 items-center gap-2 rounded-md border bg-background px-3 text-sm hover:bg-accent'
+                className='bg-surface-container-high border border-outline-variant/20 px-4 py-1.5 rounded-xl text-primary font-mono text-sm hover:opacity-80 transition-opacity flex items-center gap-2'
               >
                 {account.ensAvatar ? (
                   <Image

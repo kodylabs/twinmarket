@@ -11,17 +11,20 @@ export function TrendingSection() {
   const { data: agents = [] } = useQuery(trpc.agents.trending.queryOptions());
 
   return (
-    <section className='container mx-auto max-w-5xl px-6'>
-      <div className='flex items-end justify-between'>
+    <section className='py-12 px-8 max-w-7xl mx-auto'>
+      <div className='flex justify-between items-end mb-8'>
         <div>
-          <h2 className='text-xl font-bold'>Trending Agents</h2>
-          <p className='text-sm text-muted-foreground'>Highly utilized digital entities this week.</p>
+          <h2 className='text-2xl font-bold font-headline tracking-tight'>Trending Agents</h2>
+          <p className='text-on-surface-variant text-sm mt-1'>Highly utilized digital entities this week.</p>
         </div>
-        <Link href='/twins' className='text-sm font-medium hover:underline'>
+        <Link
+          href='/twins'
+          className='text-primary text-sm font-label flex items-center gap-2 hover:opacity-80 transition-opacity'
+        >
           VIEW ALL &rarr;
         </Link>
       </div>
-      <div className='mt-6 grid gap-4 md:grid-cols-3'>
+      <div className='flex gap-6 overflow-x-auto pb-8 hide-scrollbar snap-x'>
         {agents.map((agent) => (
           <TwinCard key={agent.slug} twin={mapAgentToTwin(agent)} />
         ))}
