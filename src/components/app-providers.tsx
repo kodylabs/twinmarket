@@ -13,6 +13,7 @@ import { useMemo } from 'react';
 import { createSiweMessage } from 'viem/siwe';
 import { WagmiProvider } from 'wagmi';
 import { getAccount, getChainId } from 'wagmi/actions';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { useMounted } from '@/hooks/use-mounted';
 import { authClient } from '@/lib/auth/auth-client';
 import { wagmiConfig } from '@/lib/wagmi';
@@ -78,7 +79,7 @@ export function AppProviders({ children }: AppProvidersProps) {
         <RainbowKitAuthenticationProvider adapter={authAdapter} status={authStatus}>
           <RainbowKitProvider>
             <NextThemesProvider attribute='class' defaultTheme='system' enableSystem storageKey={'web-theme'}>
-              {children}
+              <TooltipProvider>{children}</TooltipProvider>
             </NextThemesProvider>
           </RainbowKitProvider>
         </RainbowKitAuthenticationProvider>
