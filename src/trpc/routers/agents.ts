@@ -3,7 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { generateAgentWallet, registerAgentOnWorldChain } from '@/lib/agentkit';
 import { agentSkillTable, agentTable, asc, count, desc, eq, sum, userTable } from '@/lib/db';
-import { registerEnsName } from '@/lib/ens';
+import { registerAgent as registerEnsName } from '@/lib/ens';
 import { protectedProcedure, publicProcedure, router } from '@/trpc/init';
 
 function slugify(name: string): string {
@@ -171,6 +171,7 @@ export const agentsRouter = router({
 
       // On-chain ops first — if they fail, nothing is written to DB
       const ensResult = await registerEnsName(slug, wallet.address as `0x${string}`, {
+        price: '$0.00',
         description: input.bio,
         url: `https://twinmarket.app/twins/${slug}`,
         avatar: '',
