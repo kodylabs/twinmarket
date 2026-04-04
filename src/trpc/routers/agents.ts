@@ -4,7 +4,7 @@ import { createAgentBookVerifier } from '@worldcoin/agentkit';
 import { z } from 'zod';
 import { generateAgentWallet, getAgentBookNonce, submitAgentBookRegistration } from '@/lib/agentkit';
 import { agentSkillTable, agentTable, asc, count, desc, eq, sum, userTable } from '@/lib/db';
-import { registerEnsName } from '@/lib/ens';
+import { getEnsRecords, registerEnsName } from '@/lib/ens';
 import { protectedProcedure, publicProcedure, router } from '@/trpc/init';
 
 const agentBook = createAgentBookVerifier();
@@ -61,8 +61,11 @@ export const agentsRouter = router({
     }
 
     const { systemPrompt, privateKey, ...publicAgent } = agent;
-    const agentBookStatus = await lookupAgentBookStatus(agent.walletAddress);
-    return { ...publicAgent, agentBook: agentBookStatus };
+    const [agentBookStatus, ensRecords] = await Promise.all([
+      lookupAgentBookStatus(agent.walletAddress),
+      agent.ensName ? getEnsRecords(agent.ensName) : null,
+    ]);
+    return { ...publicAgent, agentBook: agentBookStatus, ensRecords };
   }),
 
   mine: protectedProcedure.query(async ({ ctx }) => {
