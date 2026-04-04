@@ -4,6 +4,7 @@ import { InfoLine } from '@/components/info-line';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { ZkCommitmentBadge } from '@/components/zk-commitment-badge';
 import { caller } from '@/trpc/server';
 import { PriceChart, UsageChart } from './twin-charts';
 
@@ -123,6 +124,14 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
                 )
               }
             />
+
+            {ensRecords?.promptCommitment && agent.ensName && (
+              <InfoLine
+                orientation='vertical'
+                label='Prompt Integrity'
+                value={<ZkCommitmentBadge commitment={ensRecords.promptCommitment} ensName={agent.ensName} />}
+              />
+            )}
 
             {ensRecords?.worldVerified && (
               <InfoLine

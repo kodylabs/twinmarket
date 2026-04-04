@@ -81,8 +81,11 @@ export const agentsRouter = router({
       with: { skills: true },
     });
     if (!agent) return null;
-    const agentBookStatus = await lookupAgentBookStatus(agent.walletAddress);
-    return { ...agent, agentBook: agentBookStatus };
+    const [agentBookStatus, ensRecords] = await Promise.all([
+      lookupAgentBookStatus(agent.walletAddress),
+      agent.ensName ? getEnsRecords(agent.ensName) : null,
+    ]);
+    return { ...agent, agentBook: agentBookStatus, ensRecords };
   }),
 
   stats: publicProcedure.query(async ({ ctx }) => {

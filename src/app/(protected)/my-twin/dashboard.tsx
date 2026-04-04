@@ -28,6 +28,7 @@ import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } f
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
+import { ZkCommitmentBadge } from '@/components/zk-commitment-badge';
 import { useTRPC } from '@/trpc/providers';
 
 const MOCK_WEEKLY_CALLS = [
@@ -183,6 +184,12 @@ export function MyTwinDashboard() {
                   ) : null
                 }
               />
+              {agent.ensRecords?.promptCommitment && agent.ensName && (
+                <InfoLine
+                  label='ZK Prompt'
+                  value={<ZkCommitmentBadge commitment={agent.ensRecords.promptCommitment} ensName={agent.ensName} />}
+                />
+              )}
             </div>
           </CardContent>
         </Card>

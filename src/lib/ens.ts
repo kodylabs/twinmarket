@@ -107,7 +107,14 @@ export async function registerEnsName(
   };
 }
 
-const ENS_TEXT_KEYS = ['description', 'url', 'avatar', 'world.verified', 'world.agentbook_id'] as const;
+const ENS_TEXT_KEYS = [
+  'description',
+  'url',
+  'avatar',
+  'world.verified',
+  'world.agentbook_id',
+  'prompt.zkcommit',
+] as const;
 
 export type EnsRecords = {
   description: string | null;
@@ -115,6 +122,7 @@ export type EnsRecords = {
   avatar: string | null;
   worldVerified: string | null;
   worldAgentbookId: string | null;
+  promptCommitment: string | null;
   ethAddress: string | null;
 };
 
@@ -139,6 +147,7 @@ export async function getEnsRecords(ensName: string): Promise<EnsRecords> {
     avatar: textResults[2] ?? null,
     worldVerified: textResults[3] ?? null,
     worldAgentbookId: textResults[4] ?? null,
+    promptCommitment: textResults[5] ?? null,
     ethAddress: addressResult?.value ?? null,
   };
 }
