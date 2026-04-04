@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
-const DEFAULT_MODEL = 'openai/gpt-5-nano';
+const DEFAULT_MODEL = 'google/gemini-2.5-flash-lite';
 
 function getClient(): OpenAI {
   const apiKey = process.env.OPENROUTER_API_KEY;
