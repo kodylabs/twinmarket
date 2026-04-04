@@ -8,6 +8,7 @@
     "dev": "tsx src/index.ts"
   },
   "dependencies": {
+    "@circle-fin/x402-batching": "^2.0.4",
     "@modelcontextprotocol/sdk": "^1.9.0",
     "@x402/axios": "latest",
     "@x402/evm": "latest",

@@ -1,19 +1,15 @@
 /**
- * x402 Resource Server — standard protocol (Coinbase facilitator)
+ * x402 Resource Server — Circle Gateway facilitator (Arc testnet)
  *
- * Exports a configured x402ResourceServer instance for use with @x402/next's withX402 wrapper.
- * Uses the public x402.org facilitator for payment verification and settlement.
- * Network: Base Sepolia (eip155:84532) with USDC.
+ * Uses Circle Gateway's batched settlement for gas-free USDC nanopayments on Arc.
+ * The protocol is standard x402 — withX402 from @x402/next works unchanged.
  */
 
-import { HTTPFacilitatorClient, x402ResourceServer } from '@x402/core/server';
-import { registerExactEvmScheme } from '@x402/evm/exact/server';
+import { BatchFacilitatorClient, GatewayEvmScheme } from '@circle-fin/x402-batching/server';
+import { type FacilitatorClient, x402ResourceServer } from '@x402/core/server';
 
-const facilitator = new HTTPFacilitatorClient({
-  url: 'https://x402.org/facilitator',
-});
+export const X402_NETWORK = 'eip155:5042002' as const; // Arc testnet
+const facilitator = new BatchFacilitatorClient(); // defaults to https://gateway-api-testnet.circle.com
 
-export const x402Server = new x402ResourceServer(facilitator);
-registerExactEvmScheme(x402Server);
-
-export const X402_NETWORK = 'eip155:84532' as const; // Base Sepolia
+export const x402Server = new x402ResourceServer(facilitator as FacilitatorClient);
+x402Server.register(X402_NETWORK, new GatewayEvmScheme());

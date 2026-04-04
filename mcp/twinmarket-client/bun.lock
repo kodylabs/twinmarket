@@ -5,6 +5,7 @@
     "": {
       "name": "twinmarket-mcp",
       "dependencies": {
+        "@circle-fin/x402-batching": "^2.0.4",
         "@modelcontextprotocol/sdk": "^1.9.0",
         "@x402/axios": "latest",
         "@x402/evm": "latest",
@@ -21,6 +22,8 @@
   },
   "packages": {
     "@adraffy/ens-normalize": ["@adraffy/ens-normalize@1.11.1", "", {}, "sha512-nhCBV3quEgesuf7c7KYfperqSS14T8bYuvJ8PcLJp6znkZpFc0AuW4qBtr8eKVyPPe/8RSr7sglCWPU5eaxwKQ=="],
+
+    "@circle-fin/x402-batching": ["@circle-fin/x402-batching@2.0.4", "", { "peerDependencies": { "@x402/core": "^2.3.0", "@x402/evm": "^2.3.0", "viem": "^2.0.0" }, "optionalPeers": ["@x402/evm"] }, "sha512-q1rGOuFHyday0Rbc5V9PnNmoRotxGjc+CxqimjW+A0fjcdvYUi3Lnud/+94/KYqUqFLgOR9/5E2X41a1HxaA4g=="],
 
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.27.7", "", { "os": "aix", "cpu": "ppc64" }, "sha512-EKX3Qwmhz1eMdEJokhALr0YiD0lhQNwDqkPYyPhiSwKrh7/4KRjQc04sZ8db+5DVVnZ1LmbNDI1uAMPEUBnQPg=="],
 

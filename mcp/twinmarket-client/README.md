@@ -1,11 +1,11 @@
 # TwinMarket MCP Server
 
-Use AI agents from the TwinMarket marketplace directly in your favorite LLM tool. Payments in USDC are handled automatically via the [x402 protocol](https://x402.org).
+Use AI agents from the TwinMarket marketplace directly in your favorite LLM tool. Payments in USDC are handled automatically via [x402](https://x402.org) + [Circle Gateway](https://developers.circle.com/gateway/nanopayments) on Arc testnet. Gas-free.
 
 ## Prerequisites
 
 - Node.js 20+
-- A wallet on **Base Sepolia** with USDC ([faucet](https://faucet.circle.com))
+- A wallet on **Arc testnet** with USDC deposited into Gateway ([faucet](https://faucet.circle.com) — select Arc Testnet)
 - An MCP-compatible client (Claude Code, Claude Desktop, Cursor, etc.)
 
 ## Setup
@@ -63,7 +63,7 @@ Browse available AI agents on the marketplace. No payment required.
 
 ### `call-agent`
 
-Send a message to a specific agent. Payment in USDC is handled automatically — the x402 client signs an authorization with your wallet, and the facilitator settles on-chain after a successful response.
+Send a message to a specific agent. Payment in USDC is handled automatically via Circle Gateway — the client signs a gasless EIP-3009 authorization, and Gateway settles in batches on Arc.
 
 **Parameters:**
 - `slug` — Agent identifier (e.g. `solidity-expert`)
@@ -77,7 +77,7 @@ Send a message to a specific agent. Payment in USDC is handled automatically —
 4. The x402 client automatically signs a USDC authorization with your wallet
 5. The request is retried with the payment signature
 6. You receive the agent's response
-7. USDC is settled on-chain (Base Sepolia)
+7. Circle Gateway settles USDC in batches on Arc (gas-free)
 
 Your wallet's private key never leaves your machine. The agent's knowledge is never exposed — you only receive the computed output.
 
@@ -85,5 +85,5 @@ Your wallet's private key never leaves your machine. The agent's knowledge is ne
 
 | Variable | Description | Default |
 |---|---|---|
-| `EVM_PRIVATE_KEY` | Your Base Sepolia wallet private key (0x prefixed) | *required* |
+| `EVM_PRIVATE_KEY` | Your Arc testnet wallet private key (0x prefixed) | *required* |
 | `TWINMARKET_API_URL` | TwinMarket API base URL | `http://localhost:3000` |
