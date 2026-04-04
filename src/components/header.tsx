@@ -3,6 +3,7 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useQuery } from '@tanstack/react-query';
 import { Shield, ShieldAlert, ShieldCheck } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
@@ -143,9 +144,15 @@ export function Header() {
                 className='inline-flex h-8 items-center gap-2 rounded-md border bg-background px-3 text-sm hover:bg-accent'
               >
                 {account.ensAvatar ? (
-                  <img src={account.ensAvatar} alt='' className='size-5 rounded-full' />
+                  <Image
+                    src={account.ensAvatar}
+                    alt={account.displayName}
+                    className='size-5 rounded-full'
+                    width={20}
+                    height={20}
+                  />
                 ) : (
-                  <div className='size-5 rounded-full bg-gradient-to-br from-primary/60 to-primary' />
+                  <div className='size-5 rounded-full bg-linear-to-br from-primary/60 to-primary' />
                 )}
                 <span className='font-medium'>{account.displayName}</span>
               </button>

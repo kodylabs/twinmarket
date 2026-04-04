@@ -1,14 +1,17 @@
 'use client';
 
-import { useMutation } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
+import { Check, Globe, Loader2, QrCode, Shield } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { QRCodeSVG } from 'qrcode.react';
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { useAgentBookBridge } from '@/hooks/use-agentbook-bridge';
 import type { WizardSkill } from '@/lib/wizard-storage';
-import { useTRPC } from '@/trpc/providers';
+import { trpc } from '@/trpc/client';
 import { clearWizardAction } from '../actions';
 
 function slugify(name: string): string {
@@ -25,22 +28,54 @@ interface ReviewContentProps {
   skills: WizardSkill[];
 }
 
+type Phase = 'review' | 'preparing' | 'scanning' | 'creating' | 'done';
+
 export function ReviewContent({ name, bio, systemPrompt, skills }: ReviewContentProps) {
   const router = useRouter();
-  const trpc = useTRPC();
   const slug = slugify(name);
+  const [phase, setPhase] = useState<Phase>('review');
+  const [error, setError] = useState<string | null>(null);
+  const bridge = useAgentBookBridge();
 
-  const createAgent = useMutation(
-    trpc.agents.create.mutationOptions({
-      onSuccess: async () => {
+  async function handleMint() {
+    try {
+      setError(null);
+
+      setPhase('preparing');
+      const wallet = await trpc.agents.prepareCreate.mutate();
+
+      setPhase('scanning');
+      const proof = await bridge.start(wallet.walletAddress, wallet.nonce);
+
+      setPhase('creating');
+      await trpc.agents.create.mutate({
+        name,
+        bio,
+        systemPrompt,
+        skills,
+        walletAddress: wallet.walletAddress,
+        privateKey: wallet.privateKey,
+        agentBookProof: {
+          merkleRoot: proof.merkleRoot,
+          nullifierHash: proof.nullifierHash,
+          proof: proof.proof,
+          nonce: wallet.nonce,
+        },
+      });
+
+      setPhase('done');
+      await clearWizardAction();
+      router.push('/my-twin');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong';
+      if (message.includes('already have an agent')) {
         await clearWizardAction();
         router.push('/my-twin');
-      },
-    }),
-  );
-
-  function handleMint() {
-    createAgent.mutate({ name, bio, systemPrompt, skills });
+        return;
+      }
+      setError(message);
+      setPhase('review');
+    }
   }
 
   return (
@@ -85,20 +120,88 @@ export function ReviewContent({ name, bio, systemPrompt, skills }: ReviewContent
 
       <Separator />
 
-      {createAgent.error && (
+      {/* Info card — visible before scanning */}
+      {(phase === 'review' || phase === 'preparing') && (
+        <Card className='border-muted'>
+          <CardContent className='flex items-start gap-3 pt-6'>
+            <Shield className='mt-0.5 size-5 shrink-0 text-primary' />
+            <div className='space-y-1'>
+              <p className='text-sm font-medium'>World Agent Verification</p>
+              <p className='text-xs text-muted-foreground'>
+                Clicking "Mint" will prompt a World App scan to register your agent on-chain. This proves your twin is
+                operated by a verified human — making it discoverable and trusted across the ecosystem.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* QR code scanning */}
+      {phase === 'scanning' && bridge.connectorURI && (
+        <Card className='border-primary/20 bg-primary/5'>
+          <CardContent className='flex flex-col items-center gap-4 pt-6'>
+            <div className='flex items-center gap-2'>
+              <Globe className='size-5 text-primary' />
+              <p className='text-sm font-medium'>Scan with World App to create your agent</p>
+            </div>
+            <div className='rounded-lg bg-white p-4'>
+              <QRCodeSVG value={bridge.connectorURI} size={200} />
+            </div>
+            <p className='text-center text-xs text-muted-foreground'>
+              This registers your agent on WorldChain and creates your ENS identity in a single step.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Creating */}
+      {phase === 'creating' && (
+        <Card className='border-primary/20 bg-primary/5'>
+          <CardContent className='flex items-center gap-3 pt-6'>
+            <Loader2 className='size-5 animate-spin text-primary' />
+            <div>
+              <p className='text-sm font-medium'>Creating your agent...</p>
+              <p className='text-xs text-muted-foreground'>
+                Registering ENS name + WorldChain AgentBook + saving to database
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Done */}
+      {phase === 'done' && (
+        <Card className='border-green-500/20 bg-green-500/5'>
+          <CardContent className='flex items-center gap-3 pt-6'>
+            <Check className='size-5 text-green-500' />
+            <p className='text-sm font-medium'>Agent created and verified on WorldChain!</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {(error || bridge.error) && (
         <p className='rounded-md border border-destructive/50 bg-destructive/10 px-4 py-2 text-sm text-destructive'>
-          {createAgent.error.message}
+          {error || bridge.error}
         </p>
       )}
 
       <div className='flex justify-between'>
-        <Button variant='outline' asChild>
+        <Button variant='outline' asChild disabled={phase !== 'review'}>
           <Link href='/my-twin/create/skills'>&larr; Back</Link>
         </Button>
-        <Button onClick={handleMint} disabled={createAgent.isPending}>
-          {createAgent.isPending && <Loader2 className='size-4 animate-spin' />}
-          {createAgent.isPending ? 'Minting...' : 'Mint My Twin'}
-        </Button>
+
+        {phase === 'review' && (
+          <Button onClick={handleMint}>
+            <QrCode className='size-4' />
+            Mint My Twin
+          </Button>
+        )}
+        {(phase === 'preparing' || phase === 'creating') && (
+          <Button disabled>
+            <Loader2 className='size-4 animate-spin' />
+            {phase === 'preparing' ? 'Preparing...' : 'Creating...'}
+          </Button>
+        )}
       </div>
     </div>
   );
