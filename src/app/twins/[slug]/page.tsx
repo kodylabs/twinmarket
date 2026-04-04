@@ -1,7 +1,7 @@
 import { Copy, ShieldCheck, Zap } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { caller } from '@/trpc/server';
 
 function formatCalls(n: number): string {
@@ -53,15 +53,23 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
           {/* Stats row */}
           <div className='grid grid-cols-2 gap-4'>
             <Card>
-              <CardContent className='pt-6'>
-                <p className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>Price per Call</p>
-                <p className='mt-1 text-2xl font-bold'>{agent.pricePerCall}</p>
+              <CardHeader>
+                <CardTitle className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>
+                  Price per Call
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className='text-2xl font-bold'>{agent.pricePerCall}</p>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className='pt-6'>
-                <p className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>Total Calls</p>
-                <p className='mt-1 text-2xl font-bold'>{formatCalls(agent.totalCalls)}</p>
+              <CardHeader>
+                <CardTitle className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>
+                  Total Calls
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className='text-2xl font-bold'>{formatCalls(agent.totalCalls)}</p>
               </CardContent>
             </Card>
           </div>
@@ -79,9 +87,11 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
               <div className='space-y-3'>
                 {agent.skills.map((skill) => (
                   <Card key={skill.id}>
-                    <CardContent className='pt-6'>
-                      <p className='text-sm font-semibold'>{skill.title}</p>
-                      <p className='mt-1 text-sm text-muted-foreground'>{skill.content}</p>
+                    <CardHeader>
+                      <CardTitle className='text-sm'>{skill.title}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className='text-sm text-muted-foreground'>{skill.content}</p>
                     </CardContent>
                   </Card>
                 ))}
@@ -111,7 +121,7 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
         {/* Sidebar */}
         <div className='space-y-4'>
           <Card>
-            <CardContent className='pt-6 space-y-4'>
+            <CardContent>
               <button
                 type='button'
                 className='inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90'
@@ -119,24 +129,23 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
                 <Zap className='size-4' />
                 Use Agent
               </button>
-
-              <div className='space-y-2 text-sm'>
-                <div className='flex justify-between'>
-                  <span className='text-muted-foreground'>Price</span>
-                  <span className='font-medium'>{agent.pricePerCall}</span>
-                </div>
-                <div className='flex justify-between'>
-                  <span className='text-muted-foreground'>Total calls</span>
-                  <span className='font-medium'>{formatCalls(agent.totalCalls)}</span>
-                </div>
-                {agent.ensName && (
-                  <div className='flex justify-between'>
-                    <span className='text-muted-foreground'>ENS</span>
-                    <span className='font-medium'>{agent.ensName}</span>
-                  </div>
-                )}
-              </div>
             </CardContent>
+            <CardFooter className='flex-col items-stretch gap-2 border-t text-sm'>
+              <div className='flex justify-between'>
+                <span className='text-muted-foreground'>Price</span>
+                <span className='font-medium'>{agent.pricePerCall}</span>
+              </div>
+              <div className='flex justify-between'>
+                <span className='text-muted-foreground'>Total calls</span>
+                <span className='font-medium'>{formatCalls(agent.totalCalls)}</span>
+              </div>
+              {agent.ensName && (
+                <div className='flex justify-between'>
+                  <span className='text-muted-foreground'>ENS</span>
+                  <span className='font-medium'>{agent.ensName}</span>
+                </div>
+              )}
+            </CardFooter>
           </Card>
         </div>
       </div>

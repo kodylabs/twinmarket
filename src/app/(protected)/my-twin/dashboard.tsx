@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Lock, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useTRPC } from '@/trpc/providers';
 
@@ -19,15 +19,23 @@ export function MyTwinDashboard() {
       {/* Stats */}
       <div className='grid gap-4 md:grid-cols-2'>
         <Card>
-          <CardContent className='pt-6'>
-            <p className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>Total Calls</p>
-            <p className='mt-1 text-3xl font-bold'>{agent.totalCalls.toLocaleString()}</p>
+          <CardHeader>
+            <CardTitle className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>
+              Total Calls
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className='text-3xl font-bold'>{agent.totalCalls.toLocaleString()}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className='pt-6'>
-            <p className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>Price per Call</p>
-            <p className='mt-1 text-3xl font-bold'>{agent.pricePerCall}</p>
+          <CardHeader>
+            <CardTitle className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>
+              Price per Call
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className='text-3xl font-bold'>{agent.pricePerCall}</p>
           </CardContent>
         </Card>
       </div>
@@ -35,23 +43,25 @@ export function MyTwinDashboard() {
       {/* Agent info + World ID */}
       <div className='grid gap-6 md:grid-cols-[1fr_320px]'>
         <Card>
-          <CardContent className='flex gap-6 pt-6'>
+          <CardHeader>
+            <CardTitle className='flex items-center gap-2'>
+              {agent.name}
+              <Badge variant='outline' className='uppercase'>
+                {agent.status}
+              </Badge>
+            </CardTitle>
+            <CardDescription>
+              {agent.ensName && <span className='font-mono'>{agent.ensName}</span>}
+              {!agent.ensName && agent.walletAddress && (
+                <span className='truncate font-mono'>{agent.walletAddress}</span>
+              )}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className='flex gap-6'>
             <div className='flex size-24 shrink-0 items-center justify-center rounded-lg border bg-muted'>
               <span className='text-3xl font-bold text-muted-foreground'>{agent.name.slice(0, 2)}</span>
             </div>
-            <div className='flex-1 space-y-3'>
-              <div className='flex items-center gap-2'>
-                <h2 className='text-xl font-bold'>{agent.name}</h2>
-                <Badge variant='outline' className='uppercase'>
-                  {agent.status}
-                </Badge>
-              </div>
-              <p className='text-sm text-muted-foreground'>{agent.description}</p>
-              {agent.ensName && <p className='font-mono text-sm text-muted-foreground'>{agent.ensName}</p>}
-              {agent.walletAddress && (
-                <p className='truncate font-mono text-xs text-muted-foreground'>{agent.walletAddress}</p>
-              )}
-            </div>
+            <p className='text-sm text-muted-foreground'>{agent.description}</p>
           </CardContent>
         </Card>
 
@@ -94,9 +104,11 @@ export function MyTwinDashboard() {
             <div className='grid gap-4 md:grid-cols-2'>
               {agent.skills.map((skill) => (
                 <Card key={skill.id}>
-                  <CardContent className='pt-6'>
-                    <h3 className='font-semibold'>{skill.title}</h3>
-                    <p className='mt-1 text-sm text-muted-foreground'>{skill.content}</p>
+                  <CardHeader>
+                    <CardTitle>{skill.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className='text-sm text-muted-foreground'>{skill.content}</p>
                   </CardContent>
                 </Card>
               ))}

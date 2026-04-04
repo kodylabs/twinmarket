@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
 import { TwinCard } from '@/components/twins/twin-card';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTRPC } from '@/trpc/providers';
 import { mapAgentToTwin } from '@/types/twin';
 
@@ -17,15 +17,23 @@ export function MarketplaceContent() {
       {/* Stats header */}
       <div className='grid grid-cols-2 gap-4'>
         <Card>
-          <CardContent className='pt-6'>
-            <p className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>Total Agents</p>
-            <p className='mt-1 text-3xl font-bold'>{(stats?.totalAgents ?? 0).toLocaleString()}</p>
+          <CardHeader>
+            <CardTitle className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>
+              Total Agents
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className='text-3xl font-bold'>{(stats?.totalAgents ?? 0).toLocaleString()}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className='pt-6'>
-            <p className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>Total Calls</p>
-            <p className='mt-1 text-3xl font-bold'>{Number(stats?.totalCalls ?? 0).toLocaleString()}</p>
+          <CardHeader>
+            <CardTitle className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>
+              Total Calls
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className='text-3xl font-bold'>{Number(stats?.totalCalls ?? 0).toLocaleString()}</p>
           </CardContent>
         </Card>
       </div>
