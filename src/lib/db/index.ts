@@ -1,0 +1,28 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import * as schema from './schema';
+
+function createDb() {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL environment variable is not set');
+  }
+  return drizzle({
+    schema,
+    connection: {
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === 'production',
+    },
+  });
+}
+
+let _db: ReturnType<typeof createDb> | undefined;
+export const db = new Proxy({} as ReturnType<typeof createDb>, {
+  get(_, prop) {
+    if (!_db) _db = createDb();
+    return Reflect.get(_db, prop);
+  },
+});
+
+// Re-export schema, types, and drizzle utilities
+export * from 'drizzle-orm';
+export * from './schema';
+export * from './types';
