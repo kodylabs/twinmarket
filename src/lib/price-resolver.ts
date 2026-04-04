@@ -42,5 +42,5 @@ export interface AgentPricing {
 export async function resolveAgentPricing(slug: string): Promise<AgentPricing> {
   // --- STUB: always returns free until ENS is wired ---
   console.warn(`[price-resolver] ENS not wired yet — agent "${slug}" treated as free`);
-  return { price: null, payTo: null };
+  return { price: 0.05, payTo: '0x99D60aAF848CE71D12ccEF732dc9E85e65DD8195' };
 }
