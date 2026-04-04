@@ -4,7 +4,7 @@ import { createAgentBookVerifier } from '@worldcoin/agentkit';
 import { z } from 'zod';
 import { generateAgentWallet, getAgentBookNonce, submitAgentBookRegistration } from '@/lib/agentkit';
 import { agentSkillTable, agentTable, asc, count, desc, eq, sum, userTable } from '@/lib/db';
-import { registerAgent as registerEnsName } from '@/lib/ens';
+import { getEnsRecords, registerAgent as registerEnsName } from '@/lib/ens';
 import { protectedProcedure, publicProcedure, router } from '@/trpc/init';
 
 const agentBook = createAgentBookVerifier();
@@ -60,9 +60,18 @@ export const agentsRouter = router({
       throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
     }
 
-    const { systemPrompt, privateKey, ...publicAgent } = agent;
-    const agentBookStatus = await lookupAgentBookStatus(agent.walletAddress);
-    return { ...publicAgent, agentBook: agentBookStatus };
+    const { systemPrompt, privateKey, skills, ...publicAgent } = agent;
+    const [agentBookStatus, ensRecords] = await Promise.all([
+      lookupAgentBookStatus(agent.walletAddress),
+      agent.ensName ? getEnsRecords(agent.ensName) : null,
+    ]);
+    return {
+      ...publicAgent,
+      agentBook: agentBookStatus,
+      ensRecords,
+      skillCount: skills.length,
+      systemPromptLength: systemPrompt.length,
+    };
   }),
 
   mine: protectedProcedure.query(async ({ ctx }) => {
@@ -256,5 +265,50 @@ export const agentsRouter = router({
         ensName: ensResult.ensName,
         agentBookTxHash: relayResult.txHash,
       };
+    }),
+
+  update: protectedProcedure
+    .input(
+      z.object({
+        systemPrompt: z.string().min(50).max(4000).optional(),
+        skills: z
+          .array(
+            z.object({
+              title: z.string().min(1),
+              content: z.string().min(1),
+            }),
+          )
+          .optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const agent = await ctx.db.query.agentTable.findFirst({
+        where: eq(agentTable.creatorId, ctx.user.id),
+      });
+
+      if (!agent) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
+      }
+
+      await ctx.db.transaction(async (tx) => {
+        if (input.systemPrompt !== undefined) {
+          await tx.update(agentTable).set({ systemPrompt: input.systemPrompt }).where(eq(agentTable.id, agent.id));
+        }
+
+        if (input.skills !== undefined) {
+          await tx.delete(agentSkillTable).where(eq(agentSkillTable.agentId, agent.id));
+          for (let i = 0; i < input.skills.length; i++) {
+            await tx.insert(agentSkillTable).values({
+              id: crypto.randomUUID(),
+              agentId: agent.id,
+              title: input.skills[i].title,
+              content: input.skills[i].content,
+              sortOrder: i,
+            });
+          }
+        }
+      });
+
+      return { success: true };
     }),
 });
