@@ -1,12 +1,32 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { Activity, Bot, DollarSign, Lock, Pencil, Sparkles, TrendingUp, Zap } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  Activity,
+  Bot,
+  Check,
+  DollarSign,
+  ExternalLink,
+  Lock,
+  Pencil,
+  Plus,
+  Sparkles,
+  Star,
+  Trash2,
+  TrendingUp,
+  X,
+  Zap,
+} from 'lucide-react';
+import { useState } from 'react';
 import { Bar, BarChart, XAxis } from 'recharts';
+import { InfoLine } from '@/components/info-line';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
 import { useTRPC } from '@/trpc/providers';
 
 const MOCK_WEEKLY_CALLS = [
@@ -29,7 +49,7 @@ const MOCK_WEEKLY_REVENUE = [
   { day: 'Sun', revenue: 0.18 },
 ];
 
-const _MOCK_RECENT_USAGE = [
+const MOCK_RECENT_USAGE = [
   {
     id: '1',
     input: 'Audit my Solidity contract for reentrancy',
@@ -70,10 +90,29 @@ const revenueChartConfig: ChartConfig = {
 
 export function MyTwinDashboard() {
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const { data: agent } = useQuery(trpc.agents.mine.queryOptions());
   const { data: worldIdStatus } = useQuery(trpc.worldId.status.queryOptions());
 
+  const [editingPrompt, setEditingPrompt] = useState(false);
+  const [promptDraft, setPromptDraft] = useState('');
+  const [editingSkills, setEditingSkills] = useState(false);
+  const [skillsDraft, setSkillsDraft] = useState<{ title: string; content: string }[]>([]);
+
+  const updateMutation = useMutation(
+    trpc.agents.update.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: trpc.agents.mine.queryOptions().queryKey });
+        setEditingPrompt(false);
+        setEditingSkills(false);
+      },
+    }),
+  );
+
   if (!agent) return null;
+
+  const totalWeeklyCalls = MOCK_WEEKLY_CALLS.reduce((sum, d) => sum + d.calls, 0);
+  const totalWeeklyRevenue = MOCK_WEEKLY_REVENUE.reduce((sum, d) => sum + d.revenue, 0);
 
   return (
     <div className='max-w-7xl mx-auto p-8 space-y-8 w-full'>
@@ -118,7 +157,7 @@ export function MyTwinDashboard() {
       </section>
 
       <section className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
-        {/* My Agent Card - Reworked for better UI logic */}
+        {/* My Agent Card */}
         <div className='lg:col-span-2 bg-surface-container rounded-xl overflow-hidden shadow-[0_0_32px_rgba(223,226,241,0.04)] border border-outline-variant/10 flex flex-col'>
           {/* Subtle Banner Background */}
           <div className='h-24 bg-linear-to-r from-primary/20 via-secondary/10 to-transparent' />
@@ -139,15 +178,6 @@ export function MyTwinDashboard() {
               <div className='flex items-center justify-between gap-4'>
                 <div className='space-y-1'>
                   <h2 className='text-2xl font-bold text-[#dfe2f1] font-headline leading-none'>{agent.name}</h2>
-                  <div className='flex items-center gap-2 text-xs font-mono text-on-surface-variant'>
-                    <span className='text-primary'>{agent.ensName || 'anon.eth'}</span>
-                    <span className='text-outline-variant/40'>•</span>
-                    <span>
-                      {agent.walletAddress
-                        ? `${agent.walletAddress.slice(0, 6)}...${agent.walletAddress.slice(-4)}`
-                        : 'No wallet'}
-                    </span>
-                  </div>
                 </div>
                 <Badge
                   variant='outline'
@@ -157,6 +187,58 @@ export function MyTwinDashboard() {
                 </Badge>
               </div>
               <p className='text-on-surface-variant text-sm leading-relaxed max-w-2xl'>{agent.description}</p>
+
+              {/* On-chain Identity */}
+              <div className='space-y-2 pt-2'>
+                <InfoLine
+                  label='ENS'
+                  value={
+                    agent.ensName ? (
+                      <a
+                        href={`https://sepolia.app.ens.domains/${agent.ensName}`}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        className='inline-flex items-center gap-1 font-mono text-xs text-primary hover:underline'
+                      >
+                        {agent.ensName}
+                        <ExternalLink className='size-3' />
+                      </a>
+                    ) : null
+                  }
+                />
+                <InfoLine
+                  label='Wallet'
+                  value={
+                    agent.walletAddress ? (
+                      <a
+                        href={`https://worldscan.org/address/${agent.walletAddress}`}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        className='inline-flex items-center gap-1 font-mono text-xs text-on-surface-variant hover:text-primary'
+                      >
+                        {agent.walletAddress.slice(0, 6)}...{agent.walletAddress.slice(-4)}
+                        <ExternalLink className='size-3' />
+                      </a>
+                    ) : null
+                  }
+                />
+                <InfoLine
+                  label='AgentBook'
+                  value={
+                    agent.agentBook.isRegistered ? (
+                      <a
+                        href={`https://worldscan.org/address/${agent.walletAddress}`}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        className='inline-flex items-center gap-1 font-mono text-xs text-on-surface-variant hover:text-primary'
+                      >
+                        Registered
+                        <ExternalLink className='size-3' />
+                      </a>
+                    ) : null
+                  }
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -184,44 +266,175 @@ export function MyTwinDashboard() {
         </div>
       </section>
 
-      {/* Quick Actions Section */}
-      <section className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-        <Card className='hover:bg-surface-container-high transition-colors cursor-pointer border-outline-variant/10 group'>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2 font-headline'>
-              <Zap className='size-4 text-secondary fill-secondary' />
-              Edit Skills
-            </CardTitle>
-            <CardAction>
-              <Pencil className='size-4 text-outline group-hover:text-secondary transition-colors' />
-            </CardAction>
-          </CardHeader>
-          <CardContent>
-            <p className='text-sm text-on-surface-variant'>
-              Manage your agent's technical capabilities and specialized knowledge bases.
-            </p>
-          </CardContent>
-        </Card>
-        <Card className='hover:bg-surface-container-high transition-colors cursor-pointer border-outline-variant/10 group'>
+      {/* System Prompt + Skills */}
+      <section className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+        <Card className='lg:col-span-2 border-outline-variant/10'>
           <CardHeader>
             <CardTitle className='flex items-center gap-2 font-headline'>
               <Sparkles className='size-4 text-primary fill-primary' />
-              Update Description
+              System Prompt
             </CardTitle>
             <CardAction>
-              <Pencil className='size-4 text-outline group-hover:text-primary transition-colors' />
+              {editingPrompt ? (
+                <div className='flex gap-1'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => setEditingPrompt(false)}
+                    disabled={updateMutation.isPending}
+                  >
+                    <X className='size-3' />
+                    Cancel
+                  </Button>
+                  <Button
+                    size='sm'
+                    onClick={() => updateMutation.mutate({ systemPrompt: promptDraft })}
+                    disabled={updateMutation.isPending}
+                  >
+                    <Check className='size-3' />
+                    Save
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => {
+                    setPromptDraft(agent.systemPrompt);
+                    setEditingPrompt(true);
+                  }}
+                >
+                  <Pencil className='size-3' />
+                  Edit
+                </Button>
+              )}
             </CardAction>
           </CardHeader>
           <CardContent>
-            <p className='text-sm text-on-surface-variant'>
-              Refine your twin's personality, tone of voice, and operational guidelines.
-            </p>
+            {editingPrompt ? (
+              <Textarea
+                value={promptDraft}
+                onChange={(e) => setPromptDraft(e.target.value)}
+                className='min-h-[200px] font-mono text-sm'
+              />
+            ) : (
+              <pre className='whitespace-pre-wrap rounded-xl border border-outline-variant/10 bg-surface-container-low p-4 text-sm leading-relaxed text-on-surface-variant'>
+                {agent.systemPrompt}
+              </pre>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className='border-outline-variant/10'>
+          <CardHeader>
+            <CardTitle className='flex items-center gap-2 font-headline'>
+              <Zap className='size-4 text-secondary fill-secondary' />
+              Skills
+            </CardTitle>
+            <CardAction>
+              {editingSkills ? (
+                <div className='flex gap-1'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => setEditingSkills(false)}
+                    disabled={updateMutation.isPending}
+                  >
+                    <X className='size-3' />
+                    Cancel
+                  </Button>
+                  <Button
+                    size='sm'
+                    onClick={() => updateMutation.mutate({ skills: skillsDraft })}
+                    disabled={updateMutation.isPending}
+                  >
+                    <Check className='size-3' />
+                    Save
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => {
+                    setSkillsDraft(agent.skills.map((s) => ({ title: s.title, content: s.content })));
+                    setEditingSkills(true);
+                  }}
+                >
+                  <Pencil className='size-3' />
+                  Edit
+                </Button>
+              )}
+            </CardAction>
+          </CardHeader>
+          <CardContent className='space-y-3'>
+            {editingSkills ? (
+              <>
+                {skillsDraft.map((skill, i) => (
+                  <div key={i} className='space-y-2 rounded-xl border border-outline-variant/10 p-3'>
+                    <div className='flex items-center gap-2'>
+                      <Input
+                        value={skill.title}
+                        onChange={(e) => {
+                          const next = [...skillsDraft];
+                          next[i] = { ...next[i], title: e.target.value };
+                          setSkillsDraft(next);
+                        }}
+                        placeholder='Skill title'
+                        className='text-sm'
+                      />
+                      <Button
+                        variant='ghost'
+                        size='sm'
+                        onClick={() => setSkillsDraft(skillsDraft.filter((_, j) => j !== i))}
+                      >
+                        <Trash2 className='size-3' />
+                      </Button>
+                    </div>
+                    <Textarea
+                      value={skill.content}
+                      onChange={(e) => {
+                        const next = [...skillsDraft];
+                        next[i] = { ...next[i], content: e.target.value };
+                        setSkillsDraft(next);
+                      }}
+                      placeholder='Skill content'
+                      className='min-h-[60px] text-sm'
+                    />
+                  </div>
+                ))}
+                <Button
+                  variant='outline'
+                  size='sm'
+                  className='w-full'
+                  onClick={() => setSkillsDraft([...skillsDraft, { title: '', content: '' }])}
+                >
+                  <Plus className='size-3' />
+                  Add Skill
+                </Button>
+              </>
+            ) : (
+              <>
+                {agent.skills.length === 0 && (
+                  <p className='text-sm text-on-surface-variant'>No skills configured yet.</p>
+                )}
+                {agent.skills.map((skill) => (
+                  <div
+                    key={skill.id}
+                    className='space-y-1 rounded-xl border border-outline-variant/10 bg-surface-container-low p-3'
+                  >
+                    <p className='text-sm font-medium text-on-surface'>{skill.title}</p>
+                    <p className='text-xs text-on-surface-variant line-clamp-2'>{skill.content}</p>
+                  </div>
+                ))}
+              </>
+            )}
           </CardContent>
         </Card>
       </section>
 
-      {/* Row 2: Weekly Calls + Revenue */}
-      <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+      {/* Charts + Stats Summary */}
+      <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
         <Card>
           <CardHeader>
             <CardTitle className='flex items-center gap-2'>
@@ -257,9 +470,71 @@ export function MyTwinDashboard() {
             </ChartContainer>
           </CardContent>
         </Card>
+
+        <Card className='border-outline-variant/10'>
+          <CardHeader>
+            <CardTitle className='flex items-center gap-2 font-headline'>
+              <TrendingUp className='size-4' />
+              Stats Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent className='space-y-4'>
+            <div className='space-y-1'>
+              <p className='text-[10px] font-label uppercase tracking-widest text-outline'>Total Calls</p>
+              <p className='text-2xl font-bold font-mono text-on-surface'>{agent.totalCalls.toLocaleString()}</p>
+            </div>
+            <Separator className='bg-outline-variant/20' />
+            <div className='space-y-1'>
+              <p className='text-[10px] font-label uppercase tracking-widest text-outline'>Price per Call</p>
+              <p className='text-2xl font-bold font-mono text-on-surface'>{agent.pricePerCall} USDC</p>
+            </div>
+            <Separator className='bg-outline-variant/20' />
+            <div className='space-y-1'>
+              <p className='text-[10px] font-label uppercase tracking-widest text-outline'>Weekly Calls</p>
+              <p className='text-2xl font-bold font-mono text-on-surface'>{totalWeeklyCalls}</p>
+            </div>
+            <Separator className='bg-outline-variant/20' />
+            <div className='space-y-1'>
+              <p className='text-[10px] font-label uppercase tracking-widest text-outline'>Weekly Revenue</p>
+              <p className='text-2xl font-bold font-mono text-on-surface'>{totalWeeklyRevenue.toFixed(2)} USDC</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Row 4: Recent Usage */}
+      {/* Recent Usage */}
+      <Card className='border-outline-variant/10'>
+        <CardHeader>
+          <CardTitle className='flex items-center gap-2 font-headline'>
+            <Activity className='size-4' />
+            Recent Usage
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className='space-y-3'>
+            {MOCK_RECENT_USAGE.map((usage) => (
+              <div
+                key={usage.id}
+                className='flex items-start gap-4 rounded-xl border border-outline-variant/10 bg-surface-container-low p-4'
+              >
+                <div className='min-w-0 flex-1 space-y-1'>
+                  <p className='text-sm font-medium text-on-surface'>{usage.input}</p>
+                  <p className='text-sm text-on-surface-variant'>{usage.output}</p>
+                </div>
+                <div className='flex shrink-0 flex-col items-end gap-1'>
+                  <div className='flex items-center gap-1'>
+                    <Star className='size-3 fill-yellow-400 text-yellow-400' />
+                    <span className='text-sm font-medium text-on-surface'>{usage.score}</span>
+                  </div>
+                  <span className='text-xs text-on-surface-variant'>{usage.date}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Transaction History */}
       <Card className='lg:col-span-3'>
         <CardHeader>
           <CardTitle className='flex items-center gap-2'>

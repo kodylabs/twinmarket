@@ -1,7 +1,16 @@
-import { Brain, Copy, Lock, ShieldCheck, Star, Zap } from 'lucide-react';
+import { Brain, Copy, ExternalLink, Lock, ShieldCheck, Star, Zap } from 'lucide-react';
 import { notFound } from 'next/navigation';
+import { InfoLine } from '@/components/info-line';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { caller } from '@/trpc/server';
+import { PriceChart, UsageChart } from './twin-charts';
+
+const AGENTBOOK_CONTRACT = '0xA23aB2712eA7BBa896930544C7d6636a96b944dA';
+
+function truncateAddress(address: string) {
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
 
 function formatCalls(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
@@ -19,7 +28,7 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
     notFound();
   }
 
-  const _verified = !!agent.creator?.nullifierHash;
+  const verified = !!agent.creator?.nullifierHash;
 
   return (
     <div className='max-w-7xl mx-auto px-8 py-12'>
@@ -32,6 +41,15 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
               <div className='flex items-center gap-3'>
                 <Brain className='size-8 text-secondary fill-secondary' />
                 <h1 className='text-4xl font-black tracking-tight text-on-surface font-headline'>{agent.name}</h1>
+                {verified && (
+                  <Badge
+                    variant='outline'
+                    className='bg-primary/5 text-primary border-primary/20 font-label uppercase tracking-widest text-[10px] gap-1'
+                  >
+                    <ShieldCheck className='size-3' />
+                    World ID
+                  </Badge>
+                )}
               </div>
               <div className='flex items-center gap-3 mt-2'>
                 <div className='w-8 h-8 rounded-full overflow-hidden border border-outline-variant/20 bg-linear-to-br from-primary/60 to-primary' />
@@ -53,7 +71,7 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
           </div>
 
           {/* Bento Stats */}
-          <div className='grid grid-cols-3 gap-4'>
+          <div className='grid grid-cols-4 gap-4'>
             <div className='bg-surface-container-low p-6 rounded-xl relative overflow-hidden'>
               <div className='absolute inset-0 glass-glow' />
               <span className='text-on-surface-variant font-label text-[10px] uppercase tracking-widest'>
@@ -62,14 +80,80 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
               <div className='text-2xl font-semibold font-mono mt-1 text-on-surface'>{agent.pricePerCall}</div>
             </div>
             <div className='bg-surface-container-low p-6 rounded-xl'>
-              <span className='text-on-surface-variant font-label text-[10px] uppercase tracking-widest'>Latency</span>
-              <div className='text-2xl font-semibold font-mono mt-1 text-on-surface'>1.2s</div>
+              <span className='text-on-surface-variant font-label text-[10px] uppercase tracking-widest'>Skills</span>
+              <div className='text-2xl font-semibold font-mono mt-1 text-on-surface'>{agent.skillCount}</div>
+            </div>
+            <div className='bg-surface-container-low p-6 rounded-xl'>
+              <span className='text-on-surface-variant font-label text-[10px] uppercase tracking-widest'>
+                Prompt Size
+              </span>
+              <div className='text-2xl font-semibold font-mono mt-1 text-on-surface'>
+                {agent.systemPromptLength.toLocaleString()}
+              </div>
             </div>
             <div className='bg-surface-container-low p-6 rounded-xl'>
               <span className='text-on-surface-variant font-label text-[10px] uppercase tracking-widest'>
                 Trust Score
               </span>
               <div className='text-2xl font-semibold font-mono mt-1 text-on-surface'>98%</div>
+            </div>
+          </div>
+
+          {/* On-chain Identity */}
+          <div className='flex flex-col gap-4 mt-2'>
+            <h2 className='text-xl font-bold font-headline text-on-surface'>On-chain Identity</h2>
+            <div className='bg-surface-container-low rounded-xl p-6 border border-outline-variant/10 space-y-3'>
+              {agent.ensName && (
+                <InfoLine
+                  label='ENS'
+                  value={
+                    <a
+                      href={`https://sepolia.app.ens.domains/${agent.ensName}`}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='inline-flex items-center gap-1.5 font-mono text-sm text-primary hover:underline'
+                    >
+                      {agent.ensName}
+                      <ExternalLink className='size-3' />
+                    </a>
+                  }
+                />
+              )}
+              {agent.walletAddress && (
+                <InfoLine
+                  label='Wallet'
+                  value={
+                    <a
+                      href={`https://worldscan.org/address/${agent.walletAddress}`}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='inline-flex items-center gap-1.5 font-mono text-sm text-on-surface-variant hover:text-primary'
+                    >
+                      {truncateAddress(agent.walletAddress)}
+                      <ExternalLink className='size-3' />
+                    </a>
+                  }
+                />
+              )}
+              <InfoLine
+                label='AgentBook'
+                value={
+                  agent.agentBook.isRegistered ? (
+                    <a
+                      href={`https://worldscan.org/address/${AGENTBOOK_CONTRACT}#readContract`}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='inline-flex items-center gap-1.5 font-mono text-sm text-on-surface-variant hover:text-primary'
+                    >
+                      <span className='size-1.5 rounded-full bg-green-500 inline-block' />
+                      Registered
+                      <ExternalLink className='size-3' />
+                    </a>
+                  ) : (
+                    <span className='text-xs text-on-surface-variant'>Not registered</span>
+                  )
+                }
+              />
             </div>
           </div>
 
@@ -144,6 +228,10 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
                 </div>
               </div>
             </div>
+
+            {/* Charts */}
+            <PriceChart />
+            <UsageChart />
 
             {/* Usage Analytics Mini-card */}
             <div className='bg-surface-container-low p-6 rounded-xl border border-outline-variant/10'>
