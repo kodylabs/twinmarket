@@ -104,11 +104,19 @@ export function MyTwinDashboard() {
 
   const updateMutation = useMutation(
     trpc.agents.update.mutationOptions({
-      onSuccess: () => {
+      onSuccess: (data) => {
         queryClient.invalidateQueries({ queryKey: trpc.agents.mine.queryOptions().queryKey });
         setEditingPrompt(false);
         setEditingSkills(false);
-        toast.success('Agent updated');
+        toast.success('Agent updated — ZK commitment synced on-chain', {
+          description: data.txHash ? `TX: ${data.txHash.slice(0, 10)}...${data.txHash.slice(-6)}` : undefined,
+          action: data.txHash
+            ? {
+                label: 'View TX',
+                onClick: () => window.open(`https://sepolia.etherscan.io/tx/${data.txHash}`, '_blank'),
+              }
+            : undefined,
+        });
       },
       onError: (error) => {
         toast.error(error.message);

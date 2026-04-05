@@ -1,6 +1,6 @@
 import { addEnsContracts } from '@ensdomains/ensjs';
 import { batch, getAddressRecord, getTextRecord } from '@ensdomains/ensjs/public';
-import { setRecords } from '@ensdomains/ensjs/wallet';
+import { setRecords, setTextRecord } from '@ensdomains/ensjs/wallet';
 import { createPublicClient, createWalletClient, type Hash, http, labelhash, namehash } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
@@ -105,6 +105,16 @@ export async function registerEnsName(
     ensName,
     txHashes: [createTxHash, recordsTxHash],
   };
+}
+
+export async function updateEnsTextRecord(ensName: string, key: string, value: string): Promise<Hash> {
+  const wallet = getEnsOwnerClient();
+  return setTextRecord(wallet, {
+    name: ensName,
+    key,
+    value,
+    resolverAddress: SEPOLIA_PUBLIC_RESOLVER,
+  });
 }
 
 const ENS_TEXT_KEYS = [

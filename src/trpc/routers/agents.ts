@@ -4,7 +4,7 @@ import { createAgentBookVerifier } from '@worldcoin/agentkit';
 import { z } from 'zod';
 import { generateAgentWallet, getAgentBookNonce, submitAgentBookRegistration } from '@/lib/agentkit';
 import { agentSkillTable, agentTable, asc, count, desc, eq, sum, userTable } from '@/lib/db';
-import { getEnsRecords, registerEnsName } from '@/lib/ens';
+import { getEnsRecords, registerEnsName, updateEnsTextRecord } from '@/lib/ens';
 import { computePromptCommitment } from '@/lib/zk';
 import { protectedProcedure, publicProcedure, router } from '@/trpc/init';
 
@@ -290,6 +290,7 @@ export const agentsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const agent = await ctx.db.query.agentTable.findFirst({
         where: eq(agentTable.creatorId, ctx.user.id),
+        with: { skills: true },
       });
 
       if (!agent) {
@@ -315,6 +316,16 @@ export const agentsRouter = router({
         }
       });
 
-      return { success: true };
+      // Recompute ZK commitment with updated values
+      const updatedPrompt = input.systemPrompt ?? agent.systemPrompt;
+      const updatedSkills = input.skills ?? agent.skills.map((s) => ({ title: s.title, content: s.content }));
+      const commitment = await computePromptCommitment(updatedPrompt, updatedSkills);
+
+      let txHash: string | null = null;
+      if (agent.ensName) {
+        txHash = await updateEnsTextRecord(agent.ensName, 'prompt.zkcommit', commitment);
+      }
+
+      return { success: true, commitment, txHash };
     }),
 });
