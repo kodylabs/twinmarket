@@ -1,6 +1,6 @@
 import { addEnsContracts } from '@ensdomains/ensjs';
 import { batch, getAddressRecord, getTextRecord } from '@ensdomains/ensjs/public';
-import { setRecords } from '@ensdomains/ensjs/wallet';
+import { setRecords, setTextRecord } from '@ensdomains/ensjs/wallet';
 import { createPublicClient, createWalletClient, type Hash, http, labelhash, namehash } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
@@ -33,6 +33,7 @@ type AgentRegistrationMetadata = {
   avatar: string;
   worldVerified: string;
   worldAgentbookId: string;
+  promptCommitment: string;
 };
 
 function getRpcUrl() {
@@ -97,6 +98,7 @@ export async function registerAgent(
       { key: 'world.verified', value: metadata.worldVerified },
       { key: 'world.agentbook_id', value: metadata.worldAgentbookId },
       { key: 'price', value: metadata.price },
+      { key: 'prompt.zkcommit', value: metadata.promptCommitment },
     ],
     nonce: nonce + 1,
     gas: BigInt(1_000_000),
@@ -124,7 +126,24 @@ export async function getAgentPricing(slug: string): Promise<{ price: string | n
   return { price, agentAddress };
 }
 
-const ENS_TEXT_KEYS = ['description', 'url', 'avatar', 'world.verified', 'world.agentbook_id'] as const;
+export async function updateEnsTextRecord(ensName: string, key: string, value: string): Promise<Hash> {
+  const wallet = getEnsOwnerClient();
+  return setTextRecord(wallet, {
+    name: ensName,
+    key,
+    value,
+    resolverAddress: SEPOLIA_PUBLIC_RESOLVER,
+  });
+}
+
+const ENS_TEXT_KEYS = [
+  'description',
+  'url',
+  'avatar',
+  'world.verified',
+  'world.agentbook_id',
+  'prompt.zkcommit',
+] as const;
 
 export type EnsRecords = {
   description: string | null;
@@ -132,6 +151,7 @@ export type EnsRecords = {
   avatar: string | null;
   worldVerified: string | null;
   worldAgentbookId: string | null;
+  promptCommitment: string | null;
   ethAddress: string | null;
 };
 
@@ -156,6 +176,7 @@ export async function getEnsRecords(ensName: string): Promise<EnsRecords> {
     avatar: textResults[2] ?? null,
     worldVerified: textResults[3] ?? null,
     worldAgentbookId: textResults[4] ?? null,
+    promptCommitment: textResults[5] ?? null,
     ethAddress: addressResult?.value ?? null,
   };
 }
