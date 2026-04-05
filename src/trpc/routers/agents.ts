@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { generateAgentWallet, getAgentBookNonce, submitAgentBookRegistration } from '@/lib/agentkit';
 import { agentSkillTable, agentTable, asc, count, desc, eq, sum, userTable } from '@/lib/db';
 import { getEnsRecords, registerAgent as registerEnsName, updateEnsTextRecord } from '@/lib/ens';
+import { getAgentGateway } from '@/lib/gateway';
 import { computePromptCommitment } from '@/lib/zk';
 import { protectedProcedure, publicProcedure, router } from '@/trpc/init';
 
@@ -329,4 +330,35 @@ export const agentsRouter = router({
 
       return { success: true, commitment, txHash };
     }),
+
+  treasury: protectedProcedure.query(async ({ ctx }) => {
+    const { gateway } = await getAgentGateway(ctx.db, ctx.user.id);
+    const balances = await gateway.getBalances();
+    return {
+      wallet: balances.wallet.formatted,
+      gateway: {
+        available: balances.gateway.formattedAvailable,
+        total: balances.gateway.formattedTotal,
+      },
+    };
+  }),
+
+  withdraw: protectedProcedure.input(z.object({ amount: z.string().min(1) })).mutation(async ({ ctx, input }) => {
+    const parsed = Number.parseFloat(input.amount);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Amount must be a positive number' });
+    }
+    const { gateway } = await getAgentGateway(ctx.db, ctx.user.id);
+    const result = await gateway.withdraw(input.amount);
+    return { formattedAmount: result.formattedAmount, mintTxHash: result.mintTxHash };
+  }),
+
+  exportPrivateKey: protectedProcedure.query(async ({ ctx }) => {
+    const agent = await ctx.db.query.agentTable.findFirst({
+      where: eq(agentTable.creatorId, ctx.user.id),
+    });
+    if (!agent) throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
+    if (!agent.privateKey) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'No private key' });
+    return { privateKey: agent.privateKey };
+  }),
 });

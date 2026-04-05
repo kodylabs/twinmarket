@@ -3,10 +3,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Activity,
+  ArrowDownToLine,
   Bot,
   Check,
-  DollarSign,
+  Copy,
   ExternalLink,
+  KeyRound,
+  Loader2,
   Lock,
   Pencil,
   Plus,
@@ -14,43 +17,32 @@ import {
   Sparkles,
   Star,
   Trash2,
-  TrendingUp,
+  Wallet,
   X,
   Zap,
 } from 'lucide-react';
 import { useState } from 'react';
-import { Bar, BarChart, XAxis } from 'recharts';
 import { toast } from 'sonner';
 import { InfoLine } from '@/components/info-line';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { ZkCommitmentBadge } from '@/components/zk-commitment-badge';
 import { useTRPC } from '@/trpc/providers';
-
-const MOCK_WEEKLY_CALLS = [
-  { day: 'Mon', calls: 12 },
-  { day: 'Tue', calls: 28 },
-  { day: 'Wed', calls: 45 },
-  { day: 'Thu', calls: 32 },
-  { day: 'Fri', calls: 67 },
-  { day: 'Sat', calls: 24 },
-  { day: 'Sun', calls: 18 },
-];
-
-const MOCK_WEEKLY_REVENUE = [
-  { day: 'Mon', revenue: 0.12 },
-  { day: 'Tue', revenue: 0.28 },
-  { day: 'Wed', revenue: 0.45 },
-  { day: 'Thu', revenue: 0.32 },
-  { day: 'Fri', revenue: 0.67 },
-  { day: 'Sat', revenue: 0.24 },
-  { day: 'Sun', revenue: 0.18 },
-];
 
 const MOCK_RECENT_USAGE = [
   {
@@ -83,19 +75,32 @@ const MOCK_RECENT_USAGE = [
   },
 ];
 
-const callsChartConfig: ChartConfig = {
-  calls: { label: 'Calls', color: 'var(--chart-1)' },
-};
-
-const revenueChartConfig: ChartConfig = {
-  revenue: { label: 'Revenue (USDC)', color: 'var(--chart-2)' },
-};
-
 export function MyTwinDashboard() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const { data: agent } = useQuery(trpc.agents.mine.queryOptions());
   const { data: worldIdStatus } = useQuery(trpc.worldId.status.queryOptions());
+
+  const { data: treasury, isLoading: treasuryLoading } = useQuery({
+    ...trpc.agents.treasury.queryOptions(),
+    refetchInterval: 30_000,
+  });
+
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const withdrawMutation = useMutation(
+    trpc.agents.withdraw.mutationOptions({
+      onSuccess: (data) => {
+        queryClient.invalidateQueries({ queryKey: trpc.agents.treasury.queryOptions().queryKey });
+        setWithdrawAmount('');
+        toast.success(`Withdrew ${data.formattedAmount} USDC`, {
+          description: `TX: ${data.mintTxHash.slice(0, 10)}...${data.mintTxHash.slice(-6)}`,
+        });
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
+  const [revealedKey, setRevealedKey] = useState<string | null>(null);
 
   const [editingPrompt, setEditingPrompt] = useState(false);
   const [promptDraft, setPromptDraft] = useState('');
@@ -131,9 +136,6 @@ export function MyTwinDashboard() {
   );
 
   if (!agent) return null;
-
-  const totalWeeklyCalls = MOCK_WEEKLY_CALLS.reduce((sum, d) => sum + d.calls, 0);
-  const totalWeeklyRevenue = MOCK_WEEKLY_REVENUE.reduce((sum, d) => sum + d.revenue, 0);
 
   return (
     <div className='container mx-auto max-w-6xl space-y-6 p-6'>
@@ -242,68 +244,131 @@ export function MyTwinDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className='lg:col-span-3'>
           <CardHeader>
             <CardTitle className='flex items-center gap-2'>
-              <Activity className='size-4' />
-              Weekly Calls
+              <Wallet className='size-4' />
+              Treasury
             </CardTitle>
+            <CardAction>
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={() => {
+                  queryClient.invalidateQueries({ queryKey: trpc.agents.treasury.queryOptions().queryKey });
+                }}
+              >
+                Refresh
+              </Button>
+            </CardAction>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={callsChartConfig} className='h-[200px] w-full'>
-              <BarChart data={MOCK_WEEKLY_CALLS}>
-                <XAxis dataKey='day' />
-                <Bar dataKey='calls' fill='var(--chart-1)' radius={4} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+            <div className='grid gap-6 md:grid-cols-3'>
+              <div className='space-y-4'>
+                <div className='space-y-1'>
+                  <p className='text-xs text-muted-foreground'>Gateway Available</p>
+                  <p className='text-2xl font-bold'>
+                    {treasuryLoading ? '...' : (treasury?.gateway.available ?? '0')} USDC
+                  </p>
+                </div>
+                <Separator />
+                <div className='space-y-1'>
+                  <p className='text-xs text-muted-foreground'>Gateway Total</p>
+                  <p className='text-lg font-semibold'>
+                    {treasuryLoading ? '...' : (treasury?.gateway.total ?? '0')} USDC
+                  </p>
+                </div>
+                <Separator />
+                <div className='space-y-1'>
+                  <p className='text-xs text-muted-foreground'>Wallet Balance</p>
+                  <p className='text-lg font-semibold'>{treasuryLoading ? '...' : (treasury?.wallet ?? '0')} USDC</p>
+                </div>
+              </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <DollarSign className='size-4' />
-              Revenue (x402)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={revenueChartConfig} className='h-[200px] w-full'>
-              <BarChart data={MOCK_WEEKLY_REVENUE}>
-                <XAxis dataKey='day' />
-                <Bar dataKey='revenue' fill='var(--chart-2)' radius={4} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+              <div className='space-y-4'>
+                <p className='text-sm font-medium'>Withdraw to Wallet</p>
+                <p className='text-xs text-muted-foreground'>
+                  Transfer USDC from your Gateway balance to your agent&apos;s on-chain wallet.
+                </p>
+                <div className='flex gap-2'>
+                  <Input
+                    type='text'
+                    inputMode='decimal'
+                    placeholder='Amount (USDC)'
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    disabled={withdrawMutation.isPending}
+                  />
+                  <Button
+                    onClick={() => withdrawMutation.mutate({ amount: withdrawAmount })}
+                    disabled={!withdrawAmount || withdrawMutation.isPending}
+                  >
+                    {withdrawMutation.isPending ? (
+                      <Loader2 className='size-4 animate-spin' />
+                    ) : (
+                      <ArrowDownToLine className='size-4' />
+                    )}
+                    Withdraw
+                  </Button>
+                </div>
+              </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <TrendingUp className='size-4' />
-              Stats Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent className='space-y-4'>
-            <div className='space-y-1'>
-              <p className='text-xs text-muted-foreground'>Total Calls</p>
-              <p className='text-2xl font-bold'>{agent.totalCalls.toLocaleString()}</p>
-            </div>
-            <Separator />
-            <div className='space-y-1'>
-              <p className='text-xs text-muted-foreground'>Price per Call</p>
-              <p className='text-2xl font-bold'>{agent.pricePerCall} USDC</p>
-            </div>
-            <Separator />
-            <div className='space-y-1'>
-              <p className='text-xs text-muted-foreground'>Weekly Calls</p>
-              <p className='text-2xl font-bold'>{totalWeeklyCalls}</p>
-            </div>
-            <Separator />
-            <div className='space-y-1'>
-              <p className='text-xs text-muted-foreground'>Weekly Revenue</p>
-              <p className='text-2xl font-bold'>{totalWeeklyRevenue.toFixed(2)} USDC</p>
+              <div className='space-y-4'>
+                <p className='text-sm font-medium'>Export Private Key</p>
+                <p className='text-xs text-muted-foreground'>
+                  Reveal your agent&apos;s private key to import it into an external wallet.
+                </p>
+                {revealedKey ? (
+                  <div className='space-y-2'>
+                    <code className='block break-all rounded-md border bg-muted/50 p-3 text-xs'>{revealedKey}</code>
+                    <div className='flex gap-2'>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={() => {
+                          navigator.clipboard.writeText(revealedKey);
+                          toast.success('Private key copied to clipboard');
+                        }}
+                      >
+                        <Copy className='size-3' />
+                        Copy
+                      </Button>
+                      <Button variant='outline' size='sm' onClick={() => setRevealedKey(null)}>
+                        Hide
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant='outline'>
+                        <KeyRound className='size-4' />
+                        Reveal Private Key
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Export Private Key</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will reveal your agent&apos;s private key. Anyone with access to this key has full
+                          control over your agent&apos;s wallet and funds. Never share it.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={async () => {
+                            const result = await queryClient.fetchQuery(trpc.agents.exportPrivateKey.queryOptions());
+                            setRevealedKey(result.privateKey);
+                          }}
+                        >
+                          I understand, reveal it
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
