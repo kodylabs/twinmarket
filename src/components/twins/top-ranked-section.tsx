@@ -10,12 +10,12 @@ export function TopRankedSection() {
   const { data: agents = [] } = useQuery(trpc.agents.topRanked.queryOptions());
 
   return (
-    <section className='container mx-auto max-w-5xl px-6'>
-      <div>
-        <h2 className='text-xl font-bold'>Top Ranked</h2>
-        <p className='text-sm text-muted-foreground'>Sovereign agents with the highest trust scores.</p>
+    <section className='py-12 px-8 max-w-7xl mx-auto'>
+      <div className='mb-12'>
+        <h2 className='text-2xl font-bold font-headline tracking-tight'>Top Ranked</h2>
+        <p className='text-on-surface-variant text-sm mt-1'>Sovereign agents with the highest trust scores.</p>
       </div>
-      <div className='mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
+      <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>
         {agents.map((agent, i) => (
           <RankCard key={agent.slug} twin={mapAgentToTwin(agent)} rank={i + 1} />
         ))}
