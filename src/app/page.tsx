@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic';
 
 import { Search } from 'lucide-react';
 import { LatestSection } from '@/components/twins/latest-section';
-import { TopRankedSection } from '@/components/twins/top-ranked-section';
 import { TrendingSection } from '@/components/twins/trending-section';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,8 +11,6 @@ const TRENDING_TAGS = ['Solidity Dev', 'Growth Hacker', 'UI Architect', 'DeFi An
 
 export default async function HomePage() {
   prefetch(trpc.agents.trending.queryOptions());
-
-  prefetch(trpc.agents.topRanked.queryOptions());
 
   prefetch(trpc.agents.latest.queryOptions());
 
@@ -40,7 +37,7 @@ export default async function HomePage() {
             </h1>
 
             <div className='relative max-w-2xl mx-auto group'>
-              <div className='absolute -inset-1 bg-gradient-to-r from-primary to-secondary rounded-2xl blur opacity-20 group-focus-within:opacity-40 transition duration-500'></div>
+              <div className='absolute -inset-1 bg-linear-to-r from-primary to-secondary rounded-2xl blur opacity-20 group-focus-within:opacity-40 transition duration-500'></div>
 
               <div className='relative flex items-center bg-surface-container-lowest border border-outline-variant/20 rounded-2xl px-6 py-4'>
                 <Search className='size-5 text-outline mr-4' />
@@ -75,8 +72,6 @@ export default async function HomePage() {
 
         <div className='space-y-16'>
           <TrendingSection />
-
-          <TopRankedSection />
 
           <LatestSection />
         </div>
