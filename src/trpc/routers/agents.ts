@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { generateAgentWallet, getAgentBookNonce, submitAgentBookRegistration } from '@/lib/agentkit';
 import { agentSkillTable, agentTable, asc, count, desc, eq, sum, userTable } from '@/lib/db';
 import { getEnsRecords, registerAgent as registerEnsName, updateEnsTextRecord } from '@/lib/ens';
+import { getAgentGateway } from '@/lib/gateway';
 import { computePromptCommitment } from '@/lib/zk';
 import { protectedProcedure, publicProcedure, router } from '@/trpc/init';
 
@@ -310,4 +311,57 @@ export const agentsRouter = router({
 
       return { success: true, commitment, txHash };
     }),
+
+  treasury: protectedProcedure.query(async ({ ctx }) => {
+    const { gateway } = await getAgentGateway(ctx.db, ctx.user.id);
+    const balances = await gateway.getBalances();
+    return {
+      wallet: balances.wallet.formatted,
+      gateway: {
+        available: balances.gateway.formattedAvailable,
+        total: balances.gateway.formattedTotal,
+      },
+    };
+  }),
+
+  withdraw: protectedProcedure.input(z.object({ amount: z.string().min(1) })).mutation(async ({ ctx, input }) => {
+    const parsed = Number.parseFloat(input.amount);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Amount must be a positive number' });
+    }
+    const { gateway } = await getAgentGateway(ctx.db, ctx.user.id);
+
+    const balances = await gateway.getBalances();
+    const available = Number.parseFloat(balances.gateway.formattedAvailable);
+    const GATEWAY_FEE_MARGIN = 0.002;
+    const withdrawAmount = parsed >= available ? String(Math.max(0, available - GATEWAY_FEE_MARGIN)) : input.amount;
+
+    if (Number.parseFloat(withdrawAmount) <= 0) {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Balance too low to cover Gateway fees' });
+    }
+
+    try {
+      const result = await gateway.withdraw(withdrawAmount);
+      return { formattedAmount: result.formattedAmount, mintTxHash: result.mintTxHash };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : '';
+      if (msg.includes('insufficient funds for gas')) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message:
+            'Your agent wallet needs native tokens (gas) on Arc testnet to execute the withdraw. Send a small amount to your agent wallet address first.',
+        });
+      }
+      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: msg || 'Withdrawal failed' });
+    }
+  }),
+
+  exportPrivateKey: protectedProcedure.query(async ({ ctx }) => {
+    const agent = await ctx.db.query.agentTable.findFirst({
+      where: eq(agentTable.creatorId, ctx.user.id),
+    });
+    if (!agent) throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
+    if (!agent.privateKey) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'No private key' });
+    return { privateKey: agent.privateKey };
+  }),
 });

@@ -27,5 +27,5 @@ export async function resolveAgentPricing(slug: string): Promise<AgentPricing> {
     return { price: null, agentAddress: null };
   }
 
-  return { price: price + parseFloat(promptPrice), agentAddress };
+  return { price: price + parseFloat(promptPrice.replace('$', '')), agentAddress };
 }

@@ -3,98 +3,74 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Activity,
+  ArrowDownToLine,
   Bot,
   Check,
+  Copy,
   DollarSign,
   ExternalLink,
-  Lock,
+  KeyRound,
+  Loader2,
   Pencil,
   Plus,
+  ShieldCheck,
   Sparkles,
-  Star,
   Trash2,
   TrendingUp,
+  Wallet,
   X,
   Zap,
 } from 'lucide-react';
 import { useState } from 'react';
-import { Bar, BarChart, XAxis } from 'recharts';
 import { toast } from 'sonner';
 import { InfoLine } from '@/components/info-line';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { ZkCommitmentBadge } from '@/components/zk-commitment-badge';
 import { useTRPC } from '@/trpc/providers';
 
-const MOCK_WEEKLY_CALLS = [
-  { day: 'Mon', calls: 12 },
-  { day: 'Tue', calls: 28 },
-  { day: 'Wed', calls: 45 },
-  { day: 'Thu', calls: 32 },
-  { day: 'Fri', calls: 67 },
-  { day: 'Sat', calls: 24 },
-  { day: 'Sun', calls: 18 },
-];
-
-const MOCK_WEEKLY_REVENUE = [
-  { day: 'Mon', revenue: 0.12 },
-  { day: 'Tue', revenue: 0.28 },
-  { day: 'Wed', revenue: 0.45 },
-  { day: 'Thu', revenue: 0.32 },
-  { day: 'Fri', revenue: 0.67 },
-  { day: 'Sat', revenue: 0.24 },
-  { day: 'Sun', revenue: 0.18 },
-];
-
-const MOCK_RECENT_USAGE = [
-  {
-    id: '1',
-    input: 'Audit my Solidity contract for reentrancy',
-    output: 'Found 2 potential vulnerabilities in withdraw()...',
-    score: 4.8,
-    date: '2 min ago',
-  },
-  {
-    id: '2',
-    input: 'Optimize gas usage in my ERC-721 mint',
-    output: 'Reduced gas by 34% using batch minting pattern...',
-    score: 4.9,
-    date: '15 min ago',
-  },
-  {
-    id: '3',
-    input: 'Review my DeFi yield strategy',
-    output: 'Identified 3 risk factors in your LP positions...',
-    score: 4.5,
-    date: '1h ago',
-  },
-  {
-    id: '4',
-    input: 'Write tests for my staking contract',
-    output: 'Generated 12 test cases covering edge cases...',
-    score: 5.0,
-    date: '3h ago',
-  },
-];
-
-const callsChartConfig: ChartConfig = {
-  calls: { label: 'Calls', color: 'var(--primary)' },
-};
-
-const revenueChartConfig: ChartConfig = {
-  revenue: { label: 'Revenue (USDC)', color: 'var(--secondary)' },
-};
-
 export function MyTwinDashboard() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const { data: agent } = useQuery(trpc.agents.mine.queryOptions());
   const { data: worldIdStatus } = useQuery(trpc.worldId.status.queryOptions());
+
+  const { data: treasury, isLoading: treasuryLoading } = useQuery({
+    ...trpc.agents.treasury.queryOptions(),
+    refetchInterval: 30_000,
+    staleTime: 25_000,
+  });
+
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const withdrawMutation = useMutation(
+    trpc.agents.withdraw.mutationOptions({
+      onSuccess: (data) => {
+        queryClient.invalidateQueries({ queryKey: trpc.agents.treasury.queryOptions().queryKey });
+        setWithdrawAmount('');
+        toast.success(`Withdrew ${data.formattedAmount} USDC`, {
+          description: `TX: ${data.mintTxHash.slice(0, 10)}...${data.mintTxHash.slice(-6)}`,
+        });
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
+  const [revealedKey, setRevealedKey] = useState<string | null>(null);
 
   const [editingPrompt, setEditingPrompt] = useState(false);
   const [promptDraft, setPromptDraft] = useState('');
@@ -131,47 +107,42 @@ export function MyTwinDashboard() {
 
   if (!agent) return null;
 
-  const totalWeeklyCalls = MOCK_WEEKLY_CALLS.reduce((sum, d) => sum + d.calls, 0);
-  const totalWeeklyRevenue = MOCK_WEEKLY_REVENUE.reduce((sum, d) => sum + d.revenue, 0);
-
   return (
     <div className='max-w-7xl mx-auto p-8 space-y-8 w-full'>
       {/* Stats Overview Bento Grid */}
       <section className='grid grid-cols-1 md:grid-cols-4 gap-6'>
-        {/* Main Stat: Total Revenue */}
+        {/* Main Stat: Gateway Balance */}
         <div className='md:col-span-2 bg-surface-container rounded-xl p-8 shadow-[0_0_32px_rgba(223,226,241,0.04)] relative overflow-hidden flex flex-col justify-between min-h-[220px]'>
           <div className='relative z-10'>
-            <span className='font-label text-[10px] uppercase tracking-widest text-outline'>Total Revenue</span>
+            <span className='font-label text-[10px] uppercase tracking-widest text-outline'>Gateway Balance</span>
             <div className='mt-4 flex items-baseline gap-2'>
               <span className='text-5xl font-mono font-bold text-primary'>
-                {(agent.totalCalls * 0.5).toLocaleString()}
+                {treasuryLoading ? '...' : (treasury?.gateway.total ?? '0')}
               </span>
               <span className='text-xl font-mono text-on-surface-variant'>USDC</span>
             </div>
           </div>
-          <div className='mt-auto relative z-10 flex items-center gap-2 text-primary font-mono text-sm'>
-            <TrendingUp className='size-4' />
-            <span>+14.2% from last cycle</span>
+          <div className='mt-auto relative z-10 flex items-center gap-2 text-on-surface-variant font-mono text-sm'>
+            <Wallet className='size-4 text-primary' />
+            <span>Wallet: {treasuryLoading ? '...' : (treasury?.wallet ?? '0')} USDC</span>
           </div>
           <div className='absolute right-0 bottom-0 w-64 h-64 bg-secondary/10 rounded-full blur-[80px] -mr-16 -mb-16 opacity-40'></div>
         </div>
 
         {/* Secondary Stats */}
         <div className='bg-surface-container rounded-xl p-6 flex flex-col justify-between shadow-[0_0_32px_rgba(223,226,241,0.04)]'>
-          <span className='font-label text-[10px] uppercase tracking-widest text-outline'>Usage Count</span>
+          <span className='font-label text-[10px] uppercase tracking-widest text-outline'>Total Calls</span>
           <div className='flex flex-col'>
-            <span className='text-3xl font-mono font-bold text-on-surface'>
-              {(agent.totalCalls / 1000).toFixed(1)}k
-            </span>
-            <span className='text-xs text-on-surface-variant mt-1'>Global agent calls</span>
+            <span className='text-3xl font-mono font-bold text-on-surface'>{agent.totalCalls.toLocaleString()}</span>
+            <span className='text-xs text-on-surface-variant mt-1'>Lifetime agent calls</span>
           </div>
         </div>
 
         <div className='bg-surface-container rounded-xl p-6 flex flex-col justify-between shadow-[0_0_32px_rgba(223,226,241,0.04)]'>
-          <span className='font-label text-[10px] uppercase tracking-widest text-outline'>Active Users</span>
+          <span className='font-label text-[10px] uppercase tracking-widest text-outline'>Price per Call</span>
           <div className='flex flex-col'>
-            <span className='text-3xl font-mono font-bold text-on-surface'>1,204</span>
-            <span className='text-xs text-on-surface-variant mt-1'>Current sessions</span>
+            <span className='text-3xl font-mono font-bold text-on-surface'>{agent.pricePerCall}</span>
+            <span className='text-xs text-on-surface-variant mt-1'>USDC via x402</span>
           </div>
         </div>
       </section>
@@ -282,14 +253,196 @@ export function MyTwinDashboard() {
             </p>
           </div>
           {worldIdStatus?.isVerified && (
-            <div className='mt-8 flex items-center justify-between p-4 bg-surface-container rounded-xl border border-outline-variant/20'>
-              <div className='flex items-center gap-3'>
-                <div className='w-2 h-2 rounded-full bg-[#10b981] shadow-[0_0_8px_#10b981]'></div>
-                <span className='text-sm font-mono'>ID_VERIFIED_SHA256</span>
-              </div>
-              <Lock className='size-4 text-on-surface-variant' />
+            <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+              <ShieldCheck className='size-3.5 text-primary' />
+              {worldIdStatus.verificationLevel === 'orb' ? 'Orb Verified' : 'Device Verified'}
             </div>
           )}
+        </div>
+
+        <div className='lg:col-span-3 bg-surface-container rounded-xl shadow-[0_0_32px_rgba(223,226,241,0.04)] border border-outline-variant/10 overflow-hidden'>
+          <div className='flex items-center justify-between px-8 pt-8 pb-2'>
+            <div className='flex items-center gap-2'>
+              <Wallet className='size-4 text-primary' />
+              <h3 className='text-lg font-bold text-[#dfe2f1] font-headline'>Treasury</h3>
+            </div>
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={() => {
+                queryClient.invalidateQueries({ queryKey: trpc.agents.treasury.queryOptions().queryKey });
+              }}
+            >
+              Refresh
+            </Button>
+          </div>
+          {/* Balance stats row */}
+          <div className='grid grid-cols-3 divide-x divide-outline-variant/10 border-t border-outline-variant/10'>
+            <div className='px-8 py-6 space-y-1'>
+              <p className='text-[10px] font-label uppercase tracking-widest text-outline'>Gateway Available</p>
+              <p className='text-2xl font-mono font-bold text-primary'>
+                {treasuryLoading ? (
+                  <span className='text-on-surface-variant'>…</span>
+                ) : (
+                  (treasury?.gateway.available ?? '0')
+                )}
+              </p>
+              <p className='text-xs text-on-surface-variant'>USDC · withdrawable</p>
+            </div>
+            <div className='px-8 py-6 space-y-1'>
+              <p className='text-[10px] font-label uppercase tracking-widest text-outline'>Gateway Total</p>
+              <p className='text-2xl font-mono font-bold text-on-surface'>
+                {treasuryLoading ? (
+                  <span className='text-on-surface-variant'>…</span>
+                ) : (
+                  (treasury?.gateway.total ?? '0')
+                )}
+              </p>
+              <p className='text-xs text-on-surface-variant'>USDC · earned lifetime</p>
+            </div>
+            <div className='px-8 py-6 space-y-1'>
+              <p className='text-[10px] font-label uppercase tracking-widest text-outline'>Wallet Balance</p>
+              <p className='text-2xl font-mono font-bold text-on-surface'>
+                {treasuryLoading ? <span className='text-on-surface-variant'>…</span> : (treasury?.wallet ?? '0')}
+              </p>
+              <p className='text-xs text-on-surface-variant'>USDC · on-chain</p>
+            </div>
+          </div>
+
+          {/* Actions row */}
+          <div className='grid md:grid-cols-2 divide-x divide-outline-variant/10 border-t border-outline-variant/10'>
+            {/* Withdraw */}
+            <div className='px-8 py-6 space-y-4'>
+              <div className='space-y-0.5'>
+                <p className='text-sm font-headline font-bold text-on-surface'>Withdraw to Wallet</p>
+                <p className='text-xs text-on-surface-variant'>
+                  Transfer USDC from your Gateway balance to your agent&apos;s on-chain wallet.
+                </p>
+              </div>
+              {agent.walletAddress && (
+                <div className='inline-flex items-center gap-1.5 rounded-lg bg-surface-container-low border border-outline-variant/10 px-3 py-1.5'>
+                  <Wallet className='size-3 text-outline' />
+                  <code className='text-xs font-mono text-on-surface-variant'>
+                    {agent.walletAddress.slice(0, 6)}…{agent.walletAddress.slice(-4)}
+                  </code>
+                  <button
+                    type='button'
+                    className='text-outline hover:text-primary cursor-pointer ml-0.5'
+                    onClick={() => {
+                      navigator.clipboard.writeText(agent.walletAddress!);
+                      toast.success('Wallet address copied');
+                    }}
+                  >
+                    <Copy className='size-3' />
+                  </button>
+                  <a
+                    href={`https://testnet.arcscan.app/address/${agent.walletAddress}`}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='text-outline hover:text-primary'
+                  >
+                    <ExternalLink className='size-3' />
+                  </a>
+                </div>
+              )}
+              <div className='flex gap-2'>
+                <div className='relative flex-1'>
+                  <Input
+                    type='text'
+                    inputMode='decimal'
+                    placeholder='Amount (USDC)'
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    disabled={withdrawMutation.isPending}
+                    className='font-mono pr-14'
+                  />
+                  <button
+                    type='button'
+                    className='absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-label font-bold uppercase tracking-widest text-primary hover:text-primary/80 cursor-pointer disabled:opacity-40'
+                    onClick={() => {
+                      if (treasury?.gateway.available) setWithdrawAmount(treasury.gateway.available);
+                    }}
+                    disabled={withdrawMutation.isPending || !treasury?.gateway.available}
+                  >
+                    Max
+                  </button>
+                </div>
+                <Button
+                  onClick={() => withdrawMutation.mutate({ amount: withdrawAmount })}
+                  disabled={!withdrawAmount || withdrawMutation.isPending}
+                >
+                  {withdrawMutation.isPending ? (
+                    <Loader2 className='size-4 animate-spin' />
+                  ) : (
+                    <ArrowDownToLine className='size-4' />
+                  )}
+                  Withdraw
+                </Button>
+              </div>
+            </div>
+
+            {/* Export Private Key */}
+            <div className='px-8 py-6 space-y-4'>
+              <div className='space-y-0.5'>
+                <p className='text-sm font-headline font-bold text-on-surface'>Export Private Key</p>
+                <p className='text-xs text-on-surface-variant'>
+                  Reveal your agent&apos;s private key to import it into an external wallet.
+                </p>
+              </div>
+              {revealedKey ? (
+                <div className='space-y-3'>
+                  <code className='block break-all rounded-xl border border-outline-variant/10 bg-surface-container-low p-3 font-mono text-xs text-on-surface-variant leading-relaxed'>
+                    {revealedKey}
+                  </code>
+                  <div className='flex gap-2'>
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={() => {
+                        navigator.clipboard.writeText(revealedKey);
+                        toast.success('Private key copied to clipboard');
+                      }}
+                    >
+                      <Copy className='size-3' />
+                      Copy
+                    </Button>
+                    <Button variant='outline' size='sm' onClick={() => setRevealedKey(null)}>
+                      Hide
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant='outline'>
+                      <KeyRound className='size-4' />
+                      Reveal Private Key
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Export Private Key</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will reveal your agent&apos;s private key. Anyone with access to this key has full control
+                        over your agent&apos;s wallet and funds. Never share it.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={async () => {
+                          const result = await queryClient.fetchQuery(trpc.agents.exportPrivateKey.queryOptions());
+                          setRevealedKey(result.privateKey);
+                        }}
+                      >
+                        I understand, reveal it
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -470,13 +623,9 @@ export function MyTwinDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={callsChartConfig} className='h-[200px] w-full'>
-              <BarChart data={MOCK_WEEKLY_CALLS}>
-                <XAxis dataKey='day' hide />
-                <Bar dataKey='calls' fill='var(--primary)' radius={4} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-              </BarChart>
-            </ChartContainer>
+            <div className='h-[200px] w-full flex items-center justify-center'>
+              <p className='text-sm text-on-surface-variant'>No data currently available.</p>
+            </div>
           </CardContent>
         </Card>
 
@@ -488,13 +637,9 @@ export function MyTwinDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={revenueChartConfig} className='h-[200px] w-full'>
-              <BarChart data={MOCK_WEEKLY_REVENUE}>
-                <XAxis dataKey='day' hide />
-                <Bar dataKey='revenue' fill='var(--secondary)' radius={4} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-              </BarChart>
-            </ChartContainer>
+            <div className='h-[200px] w-full flex items-center justify-center'>
+              <p className='text-sm text-on-surface-variant'>No data currently available.</p>
+            </div>
           </CardContent>
         </Card>
 
@@ -518,12 +663,12 @@ export function MyTwinDashboard() {
             <Separator className='bg-outline-variant/20' />
             <div className='space-y-1'>
               <p className='text-[10px] font-label uppercase tracking-widest text-outline'>Weekly Calls</p>
-              <p className='text-2xl font-bold font-mono text-on-surface'>{totalWeeklyCalls}</p>
+              <p className='text-sm text-on-surface-variant'>No data currently available.</p>
             </div>
             <Separator className='bg-outline-variant/20' />
             <div className='space-y-1'>
               <p className='text-[10px] font-label uppercase tracking-widest text-outline'>Weekly Revenue</p>
-              <p className='text-2xl font-bold font-mono text-on-surface'>{totalWeeklyRevenue.toFixed(2)} USDC</p>
+              <p className='text-sm text-on-surface-variant'>No data currently available.</p>
             </div>
           </CardContent>
         </Card>
@@ -538,26 +683,7 @@ export function MyTwinDashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className='space-y-3'>
-            {MOCK_RECENT_USAGE.map((usage) => (
-              <div
-                key={usage.id}
-                className='flex items-start gap-4 rounded-xl border border-outline-variant/10 bg-surface-container-low p-4'
-              >
-                <div className='min-w-0 flex-1 space-y-1'>
-                  <p className='text-sm font-medium text-on-surface'>{usage.input}</p>
-                  <p className='text-sm text-on-surface-variant'>{usage.output}</p>
-                </div>
-                <div className='flex shrink-0 flex-col items-end gap-1'>
-                  <div className='flex items-center gap-1'>
-                    <Star className='size-3 fill-yellow-400 text-yellow-400' />
-                    <span className='text-sm font-medium text-on-surface'>{usage.score}</span>
-                  </div>
-                  <span className='text-xs text-on-surface-variant'>{usage.date}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          <p className='text-sm text-on-surface-variant'>No usage yet.</p>
         </CardContent>
       </Card>
 
@@ -594,15 +720,9 @@ export function MyTwinDashboard() {
               </tr>
             </thead>
             <tbody className='divide-y divide-outline-variant/10'>
-              <tr className='hover:bg-surface-container-highest/30 transition-colors'>
-                <td className='px-8 py-5 font-mono text-xs text-on-surface-variant'>0x3f...91d2</td>
-                <td className='px-8 py-5 text-sm font-headline'>Atlas v2.4</td>
-                <td className='px-8 py-5 text-sm text-on-surface-variant'>2024.05.21</td>
-                <td className='px-8 py-5 text-right font-mono text-primary font-bold'>1,240.00 USDC</td>
-                <td className='px-8 py-5 text-center'>
-                  <span className='px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-label font-bold'>
-                    SETTLED
-                  </span>
+              <tr>
+                <td colSpan={5} className='px-8 py-8 text-center text-sm text-on-surface-variant'>
+                  No available transactions yet.
                 </td>
               </tr>
             </tbody>
