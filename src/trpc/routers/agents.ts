@@ -119,25 +119,6 @@ export const agentsRouter = router({
       .limit(3);
   }),
 
-  topRanked: publicProcedure.query(async ({ ctx }) => {
-    return ctx.db
-      .select({
-        name: agentTable.name,
-        slug: agentTable.slug,
-        description: agentTable.description,
-        avatarUrl: agentTable.avatarUrl,
-        totalCalls: agentTable.totalCalls,
-        ensName: agentTable.ensName,
-        walletAddress: agentTable.walletAddress,
-        pricePerCall: agentTable.pricePerCall,
-      })
-      .from(agentTable)
-      .where(eq(agentTable.status, 'active'))
-      .orderBy(desc(agentTable.totalCalls))
-      .limit(4)
-      .offset(3);
-  }),
-
   latest: publicProcedure.query(async ({ ctx }) => {
     return ctx.db
       .select({
