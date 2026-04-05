@@ -330,8 +330,30 @@ export const agentsRouter = router({
       throw new TRPCError({ code: 'BAD_REQUEST', message: 'Amount must be a positive number' });
     }
     const { gateway } = await getAgentGateway(ctx.db, ctx.user.id);
-    const result = await gateway.withdraw(input.amount);
-    return { formattedAmount: result.formattedAmount, mintTxHash: result.mintTxHash };
+
+    const balances = await gateway.getBalances();
+    const available = Number.parseFloat(balances.gateway.formattedAvailable);
+    const GATEWAY_FEE_MARGIN = 0.002;
+    const withdrawAmount = parsed >= available ? String(Math.max(0, available - GATEWAY_FEE_MARGIN)) : input.amount;
+
+    if (Number.parseFloat(withdrawAmount) <= 0) {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Balance too low to cover Gateway fees' });
+    }
+
+    try {
+      const result = await gateway.withdraw(withdrawAmount);
+      return { formattedAmount: result.formattedAmount, mintTxHash: result.mintTxHash };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : '';
+      if (msg.includes('insufficient funds for gas')) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message:
+            'Your agent wallet needs native tokens (gas) on Arc testnet to execute the withdraw. Send a small amount to your agent wallet address first.',
+        });
+      }
+      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: msg || 'Withdrawal failed' });
+    }
   }),
 
   exportPrivateKey: protectedProcedure.query(async ({ ctx }) => {
