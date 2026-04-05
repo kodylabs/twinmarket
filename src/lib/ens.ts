@@ -1,8 +1,10 @@
 import { addEnsContracts } from '@ensdomains/ensjs';
-import { setRecords } from '@ensdomains/ensjs/wallet';
+import { batch, getAddressRecord, getTextRecord } from '@ensdomains/ensjs/public';
+import { setRecords, setTextRecord } from '@ensdomains/ensjs/wallet';
 import { createPublicClient, createWalletClient, type Hash, http, labelhash, namehash } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
+import { normalize } from 'viem/ens';
 
 const PARENT_DOMAIN = 'twinmarket.eth';
 const SEPOLIA_PUBLIC_RESOLVER = '0xE99638b40E4Fff0129D56f03b55b6bbC4BBE49b5' as const;
@@ -24,12 +26,14 @@ const ensRegistryAbi = [
   },
 ] as const;
 
-type AgentRecordsMetadata = {
+type AgentRegistrationMetadata = {
+  price: string;
   description: string;
   url: string;
   avatar: string;
   worldVerified: string;
   worldAgentbookId: string;
+  promptCommitment: string;
 };
 
 function getRpcUrl() {
@@ -56,14 +60,14 @@ function getPublicClient() {
   });
 }
 
-export async function registerEnsName(
+export async function registerAgent(
   slug: string,
   agentAddress: `0x${string}`,
-  metadata: AgentRecordsMetadata,
+  metadata: AgentRegistrationMetadata,
 ): Promise<{ ensName: string; txHashes: Hash[] }> {
   const wallet = getEnsOwnerClient();
   const publicClient = getPublicClient();
-  const ensName = `${slug}.${PARENT_DOMAIN}`;
+  const ensName = getAgentEnsName(slug);
 
   const parentNode = namehash(PARENT_DOMAIN);
   const label = labelhash(slug);
@@ -93,13 +97,86 @@ export async function registerEnsName(
       { key: 'avatar', value: metadata.avatar },
       { key: 'world.verified', value: metadata.worldVerified },
       { key: 'world.agentbook_id', value: metadata.worldAgentbookId },
+      { key: 'price', value: metadata.price },
+      { key: 'prompt.zkcommit', value: metadata.promptCommitment },
     ],
     nonce: nonce + 1,
-    gas: 1_000_000n,
+    gas: BigInt(1_000_000),
   });
 
+  return { ensName, txHashes: [createTxHash, recordsTxHash] };
+}
+
+export async function getAgentTextRecord(slug: string, key: string): Promise<string | null> {
+  const ensName = getAgentEnsName(slug);
+  return getPublicClient().getEnsText({ name: normalize(ensName), key });
+}
+
+function getAgentEnsName(slug: string): string {
+  return `${slug}.${PARENT_DOMAIN}`;
+}
+
+export async function getAgentAddress(slug: string): Promise<string | null> {
+  const ensName = getAgentEnsName(slug);
+  return getPublicClient().getEnsAddress({ name: normalize(ensName) });
+}
+
+export async function getAgentPricing(slug: string): Promise<{ price: string | null; agentAddress: string | null }> {
+  const [price, agentAddress] = await Promise.all([getAgentTextRecord(slug, 'price'), getAgentAddress(slug)]);
+  return { price, agentAddress };
+}
+
+export async function updateEnsTextRecord(ensName: string, key: string, value: string): Promise<Hash> {
+  const wallet = getEnsOwnerClient();
+  return setTextRecord(wallet, {
+    name: ensName,
+    key,
+    value,
+    resolverAddress: SEPOLIA_PUBLIC_RESOLVER,
+  });
+}
+
+const ENS_TEXT_KEYS = [
+  'description',
+  'url',
+  'avatar',
+  'world.verified',
+  'world.agentbook_id',
+  'prompt.zkcommit',
+] as const;
+
+export type EnsRecords = {
+  description: string | null;
+  url: string | null;
+  avatar: string | null;
+  worldVerified: string | null;
+  worldAgentbookId: string | null;
+  promptCommitment: string | null;
+  ethAddress: string | null;
+};
+
+export async function getEnsRecords(ensName: string): Promise<EnsRecords> {
+  const client = createPublicClient({
+    chain: addEnsContracts(sepolia),
+    transport: http(getRpcUrl()),
+  });
+
+  const results = await batch(
+    client,
+    ...ENS_TEXT_KEYS.map((key) => getTextRecord.batch({ name: ensName, key })),
+    getAddressRecord.batch({ name: ensName, coin: 'ETH' }),
+  );
+
+  const textResults = results.slice(0, ENS_TEXT_KEYS.length) as (string | null)[];
+  const addressResult = results[ENS_TEXT_KEYS.length] as { value: string } | null;
+
   return {
-    ensName,
-    txHashes: [createTxHash, recordsTxHash],
+    description: textResults[0] ?? null,
+    url: textResults[1] ?? null,
+    avatar: textResults[2] ?? null,
+    worldVerified: textResults[3] ?? null,
+    worldAgentbookId: textResults[4] ?? null,
+    promptCommitment: textResults[5] ?? null,
+    ethAddress: addressResult?.value ?? null,
   };
 }

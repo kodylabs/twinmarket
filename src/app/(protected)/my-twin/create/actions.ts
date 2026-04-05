@@ -19,9 +19,8 @@ export async function savePersonaAction(formData: FormData) {
 }
 
 export async function saveSkillsAction(skillsJson: string) {
-  await setWizardData({
-    skills: JSON.parse(skillsJson),
-  });
+  const skills = JSON.parse(skillsJson);
+  await setWizardData({ skills });
   redirect('/my-twin/create/review');
 }
 

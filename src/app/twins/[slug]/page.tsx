@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { InfoLine } from '@/components/info-line';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ZkCommitmentBadge } from '@/components/zk-commitment-badge';
 import { caller } from '@/trpc/server';
 import { PriceChart, UsageChart } from './twin-charts';
 
@@ -29,6 +30,8 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
   }
 
   const verified = !!agent.creator?.nullifierHash;
+  const ensRecords = agent.ensRecords;
+  const _description = ensRecords?.description || agent.description;
 
   return (
     <div className='max-w-7xl mx-auto px-8 py-12'>
@@ -154,6 +157,12 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
                   )
                 }
               />
+              {ensRecords?.promptCommitment && agent.ensName && (
+                <InfoLine
+                  label='Prompt Integrity'
+                  value={<ZkCommitmentBadge commitment={ensRecords.promptCommitment} ensName={agent.ensName} />}
+                />
+              )}
             </div>
           </div>
 
@@ -161,16 +170,9 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
           <div className='flex flex-col gap-4 mt-4'>
             <h2 className='text-xl font-bold font-headline text-on-surface'>Description</h2>
             <p className='text-on-surface-variant leading-relaxed text-lg'>{agent.description}</p>
-            <div className='flex flex-wrap gap-2 mt-2'>
-              {agent.skills.map((skill) => (
-                <span
-                  key={skill.id}
-                  className='bg-secondary-container/20 text-on-secondary-container px-3 py-1 rounded-full text-xs border border-secondary-container/30 font-label uppercase'
-                >
-                  {skill.title}
-                </span>
-              ))}
-            </div>
+            {agent.skillCount > 0 && (
+              <span className='text-on-surface-variant text-sm'>{agent.skillCount} skills available</span>
+            )}
           </div>
 
           {/* CLI Integration */}

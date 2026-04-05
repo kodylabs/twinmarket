@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import '@/styles/globals.css';
 import { Inter, JetBrains_Mono, Space_Grotesk } from 'next/font/google';
+import { Toaster } from 'sonner';
 import { AppProviders } from '@/components/app-providers';
 import { Footer } from '@/components/footer';
 import { Header } from '@/components/header';
@@ -46,6 +47,7 @@ export default function RootLayout({
           <Header />
           <main className='flex-grow pt-16'>{children}</main>
           <Footer />
+          <Toaster richColors />
         </AppProviders>
       </body>
     </html>

@@ -4,7 +4,8 @@ import { createAgentBookVerifier } from '@worldcoin/agentkit';
 import { z } from 'zod';
 import { generateAgentWallet, getAgentBookNonce, submitAgentBookRegistration } from '@/lib/agentkit';
 import { agentSkillTable, agentTable, asc, count, desc, eq, sum, userTable } from '@/lib/db';
-import { registerEnsName } from '@/lib/ens';
+import { getEnsRecords, registerAgent as registerEnsName, updateEnsTextRecord } from '@/lib/ens';
+import { computePromptCommitment } from '@/lib/zk';
 import { protectedProcedure, publicProcedure, router } from '@/trpc/init';
 
 const agentBook = createAgentBookVerifier();
@@ -60,12 +61,16 @@ export const agentsRouter = router({
       throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
     }
 
-    const { systemPrompt, privateKey, ...publicAgent } = agent;
-    const agentBookStatus = await lookupAgentBookStatus(agent.walletAddress);
+    const { systemPrompt, privateKey, skills, ...publicAgent } = agent;
+    const [agentBookStatus, ensRecords] = await Promise.all([
+      lookupAgentBookStatus(agent.walletAddress),
+      agent.ensName ? getEnsRecords(agent.ensName) : null,
+    ]);
     return {
       ...publicAgent,
       agentBook: agentBookStatus,
-      skillCount: agent.skills.length,
+      ensRecords,
+      skillCount: skills.length,
       systemPromptLength: systemPrompt.length,
     };
   }),
@@ -76,8 +81,11 @@ export const agentsRouter = router({
       with: { skills: true },
     });
     if (!agent) return null;
-    const agentBookStatus = await lookupAgentBookStatus(agent.walletAddress);
-    return { ...agent, agentBook: agentBookStatus };
+    const [agentBookStatus, ensRecords] = await Promise.all([
+      lookupAgentBookStatus(agent.walletAddress),
+      agent.ensName ? getEnsRecords(agent.ensName) : null,
+    ]);
+    return { ...agent, agentBook: agentBookStatus, ensRecords };
   }),
 
   stats: publicProcedure.query(async ({ ctx }) => {
@@ -147,52 +155,6 @@ export const agentsRouter = router({
       .limit(3);
   }),
 
-  update: protectedProcedure
-    .input(
-      z.object({
-        systemPrompt: z.string().min(50).max(4000).optional(),
-        skills: z
-          .array(
-            z.object({
-              title: z.string().min(1),
-              content: z.string().min(1),
-            }),
-          )
-          .optional(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const agent = await ctx.db.query.agentTable.findFirst({
-        where: eq(agentTable.creatorId, ctx.user.id),
-      });
-
-      if (!agent) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
-      }
-
-      await ctx.db.transaction(async (tx) => {
-        if (input.systemPrompt !== undefined) {
-          await tx.update(agentTable).set({ systemPrompt: input.systemPrompt }).where(eq(agentTable.id, agent.id));
-        }
-
-        if (input.skills !== undefined) {
-          await tx.delete(agentSkillTable).where(eq(agentSkillTable.agentId, agent.id));
-
-          for (let i = 0; i < input.skills.length; i++) {
-            await tx.insert(agentSkillTable).values({
-              id: crypto.randomUUID(),
-              agentId: agent.id,
-              title: input.skills[i].title,
-              content: input.skills[i].content,
-              sortOrder: i,
-            });
-          }
-        }
-      });
-
-      return { success: true };
-    }),
-
   prepareCreate: protectedProcedure.mutation(async ({ ctx }) => {
     const existing = await ctx.db.query.agentTable.findFirst({
       where: eq(agentTable.creatorId, ctx.user.id),
@@ -261,14 +223,18 @@ export const agentsRouter = router({
         where: eq(userTable.id, ctx.user.id),
       });
 
+      const promptCommitment = await computePromptCommitment(input.systemPrompt, input.skills);
+
       // 1. ENS registration + AgentBook relay in parallel (independent operations)
       const [ensResult, relayResult] = await Promise.all([
         registerEnsName(slug, input.walletAddress as `0x${string}`, {
+          price: '$0.01',
           description: input.bio,
           url: `https://twinmarket.app/twins/${slug}`,
           avatar: '',
           worldVerified: dbUser?.verificationLevel ?? '',
           worldAgentbookId: '',
+          promptCommitment,
         }),
         submitAgentBookRegistration(input.walletAddress, input.agentBookProof),
       ]);
@@ -306,5 +272,61 @@ export const agentsRouter = router({
         ensName: ensResult.ensName,
         agentBookTxHash: relayResult.txHash,
       };
+    }),
+
+  update: protectedProcedure
+    .input(
+      z.object({
+        systemPrompt: z.string().min(50).max(4000).optional(),
+        skills: z
+          .array(
+            z.object({
+              title: z.string().min(1),
+              content: z.string().min(1),
+            }),
+          )
+          .optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const agent = await ctx.db.query.agentTable.findFirst({
+        where: eq(agentTable.creatorId, ctx.user.id),
+        with: { skills: true },
+      });
+
+      if (!agent) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
+      }
+
+      await ctx.db.transaction(async (tx) => {
+        if (input.systemPrompt !== undefined) {
+          await tx.update(agentTable).set({ systemPrompt: input.systemPrompt }).where(eq(agentTable.id, agent.id));
+        }
+
+        if (input.skills !== undefined) {
+          await tx.delete(agentSkillTable).where(eq(agentSkillTable.agentId, agent.id));
+          for (let i = 0; i < input.skills.length; i++) {
+            await tx.insert(agentSkillTable).values({
+              id: crypto.randomUUID(),
+              agentId: agent.id,
+              title: input.skills[i].title,
+              content: input.skills[i].content,
+              sortOrder: i,
+            });
+          }
+        }
+      });
+
+      // Recompute ZK commitment with updated values
+      const updatedPrompt = input.systemPrompt ?? agent.systemPrompt;
+      const updatedSkills = input.skills ?? agent.skills.map((s) => ({ title: s.title, content: s.content }));
+      const commitment = await computePromptCommitment(updatedPrompt, updatedSkills);
+
+      let txHash: string | null = null;
+      if (agent.ensName) {
+        txHash = await updateEnsTextRecord(agent.ensName, 'prompt.zkcommit', commitment);
+      }
+
+      return { success: true, commitment, txHash };
     }),
 });

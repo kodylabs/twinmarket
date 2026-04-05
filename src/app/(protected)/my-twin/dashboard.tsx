@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { Bar, BarChart, XAxis } from 'recharts';
+import { toast } from 'sonner';
 import { InfoLine } from '@/components/info-line';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } f
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
+import { ZkCommitmentBadge } from '@/components/zk-commitment-badge';
 import { useTRPC } from '@/trpc/providers';
 
 const MOCK_WEEKLY_CALLS = [
@@ -101,10 +103,28 @@ export function MyTwinDashboard() {
 
   const updateMutation = useMutation(
     trpc.agents.update.mutationOptions({
-      onSuccess: () => {
+      onSuccess: (data) => {
         queryClient.invalidateQueries({ queryKey: trpc.agents.mine.queryOptions().queryKey });
         setEditingPrompt(false);
         setEditingSkills(false);
+        toast.success('Agent updated — ZK commitment synced on-chain', {
+          description: data.txHash ? `TX: ${data.txHash.slice(0, 10)}...${data.txHash.slice(-6)}` : undefined,
+          action: data.txHash
+            ? {
+                label: 'View TX',
+                onClick: () => window.open(`https://sepolia.etherscan.io/tx/${data.txHash}`, '_blank'),
+              }
+            : undefined,
+        });
+      },
+      onError: (error) => {
+        try {
+          const issues = JSON.parse(error.message) as { path: string[]; message: string }[];
+          const messages = issues.map((i) => `${i.path.join('.')}: ${i.message}`);
+          toast.error(messages.join('\n'));
+        } catch {
+          toast.error(error.message);
+        }
       },
     }),
   );
@@ -238,6 +258,12 @@ export function MyTwinDashboard() {
                     ) : null
                   }
                 />
+                {agent.ensRecords?.promptCommitment && agent.ensName && (
+                  <InfoLine
+                    label='ZK Prompt'
+                    value={<ZkCommitmentBadge commitment={agent.ensRecords.promptCommitment} ensName={agent.ensName} />}
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -318,7 +344,7 @@ export function MyTwinDashboard() {
                 className='min-h-[200px] font-mono text-sm'
               />
             ) : (
-              <pre className='whitespace-pre-wrap rounded-xl border border-outline-variant/10 bg-surface-container-low p-4 text-sm leading-relaxed text-on-surface-variant'>
+              <pre className='whitespace-pre-wrap overflow-hidden break-all rounded-xl border border-outline-variant/10 bg-surface-container-low p-4 text-sm leading-relaxed text-on-surface-variant'>
                 {agent.systemPrompt}
               </pre>
             )}
