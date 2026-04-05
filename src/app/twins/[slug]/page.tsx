@@ -31,7 +31,6 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
 
   const verified = !!agent.creator?.nullifierHash;
   const ensRecords = agent.ensRecords;
-  const _description = ensRecords?.description || agent.description;
 
   return (
     <div className='max-w-7xl mx-auto px-8 py-12'>

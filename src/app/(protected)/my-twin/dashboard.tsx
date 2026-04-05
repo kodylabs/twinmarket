@@ -242,6 +242,13 @@ export function MyTwinDashboard() {
                     ) : null
                   }
                 />
+
+                {agent.ensRecords?.promptCommitment && agent.ensName && (
+                  <InfoLine
+                    label='ZK Prompt'
+                    value={<ZkCommitmentBadge commitment={agent.ensRecords.promptCommitment} ensName={agent.ensName} />}
+                  />
+                )}
                 <InfoLine
                   label='AgentBook'
                   value={
@@ -258,12 +265,6 @@ export function MyTwinDashboard() {
                     ) : null
                   }
                 />
-                {agent.ensRecords?.promptCommitment && agent.ensName && (
-                  <InfoLine
-                    label='ZK Prompt'
-                    value={<ZkCommitmentBadge commitment={agent.ensRecords.promptCommitment} ensName={agent.ensName} />}
-                  />
-                )}
               </div>
             </div>
           </div>
