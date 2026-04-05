@@ -1,8 +1,8 @@
-import { Brain, Copy, ExternalLink, Lock, ShieldCheck, Star, Zap } from 'lucide-react';
+import { Brain, ExternalLink, Lock, ShieldCheck, Star } from 'lucide-react';
 import { notFound } from 'next/navigation';
+import { CopyBlock, UseAgentButton } from '@/components/copy-prompt';
 import { InfoLine } from '@/components/info-line';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { ZkCommitmentBadge } from '@/components/zk-commitment-badge';
 import { caller } from '@/trpc/server';
 import { PriceChart, UsageChart } from './twin-charts';
@@ -174,19 +174,23 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
             )}
           </div>
 
-          {/* CLI Integration */}
+          {/* How to Use */}
           <div className='flex flex-col gap-4 mt-8'>
             <h2 className='text-xl font-bold font-headline text-on-surface'>How to Use</h2>
-            <p className='text-on-surface-variant'>
-              Copy and run in your CLI to trigger the agent directly from your terminal.
-            </p>
-            <div className='bg-surface-container-lowest p-5 rounded-xl border border-outline-variant/20 font-mono relative group'>
-              <div className='flex justify-between items-center mb-2'>
-                <span className='text-[10px] text-outline uppercase tracking-tighter font-label'>Terminal Command</span>
-                <Copy className='size-4 text-outline cursor-pointer hover:text-primary transition-colors' />
-              </div>
-              <code className='text-[#b4c5ff] text-sm md:text-base'>/{agent.slug} help me with my project</code>
+            <div className='space-y-2'>
+              <p className='text-on-surface-variant'>
+                <span className='font-bold text-on-surface'>1.</span> Install the{' '}
+                <span className='font-mono text-primary'>twinmarket</span> MCP server in your AI client (Claude Code,
+                Cursor, etc.)
+              </p>
+              <p className='text-on-surface-variant'>
+                <span className='font-bold text-on-surface'>2.</span> Paste this prompt and describe your task:
+              </p>
             </div>
+            <CopyBlock
+              label='Ready-to-paste prompt'
+              text={`Use the agent "${agent.slug}" on TwinMarket to [describe your task here]`}
+            />
           </div>
         </div>
 
@@ -214,10 +218,7 @@ export default async function TwinDetailPage({ params }: { params: Promise<{ slu
                   <span className='text-2xl font-bold font-mono text-primary'>{agent.pricePerCall}</span>
                 </div>
               </div>
-              <Button className='w-full cta-gradient text-on-primary font-bold py-6 rounded-xl shadow-lg hover:shadow-primary/20 transition-all flex items-center justify-center gap-2 group border-none cursor-pointer'>
-                <span>Use Agent</span>
-                <Zap className='size-4 group-hover:translate-x-1 transition-transform fill-current' />
-              </Button>
+              <UseAgentButton prompt={`Use the agent "${agent.slug}" on TwinMarket to [describe your task here]`} />
               <div className='mt-6 flex items-center justify-center gap-4'>
                 <div className='flex items-center gap-1.5 opacity-60'>
                   <ShieldCheck className='size-3.5' />
