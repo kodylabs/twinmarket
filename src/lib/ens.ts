@@ -4,6 +4,7 @@ import { setRecords, setTextRecord } from '@ensdomains/ensjs/wallet';
 import { createPublicClient, createWalletClient, type Hash, http, labelhash, namehash } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
+import { normalize } from 'viem/ens';
 
 const PARENT_DOMAIN = 'twinmarket.eth';
 const SEPOLIA_PUBLIC_RESOLVER = '0xE99638b40E4Fff0129D56f03b55b6bbC4BBE49b5' as const;
@@ -25,7 +26,8 @@ const ensRegistryAbi = [
   },
 ] as const;
 
-type AgentRecordsMetadata = {
+type AgentRegistrationMetadata = {
+  price: string;
   description: string;
   url: string;
   avatar: string;
@@ -58,14 +60,14 @@ function getPublicClient() {
   });
 }
 
-export async function registerEnsName(
+export async function registerAgent(
   slug: string,
   agentAddress: `0x${string}`,
-  metadata: AgentRecordsMetadata,
+  metadata: AgentRegistrationMetadata,
 ): Promise<{ ensName: string; txHashes: Hash[] }> {
   const wallet = getEnsOwnerClient();
   const publicClient = getPublicClient();
-  const ensName = `${slug}.${PARENT_DOMAIN}`;
+  const ensName = getAgentEnsName(slug);
 
   const parentNode = namehash(PARENT_DOMAIN);
   const label = labelhash(slug);
@@ -95,16 +97,33 @@ export async function registerEnsName(
       { key: 'avatar', value: metadata.avatar },
       { key: 'world.verified', value: metadata.worldVerified },
       { key: 'world.agentbook_id', value: metadata.worldAgentbookId },
+      { key: 'price', value: metadata.price },
       { key: 'prompt.zkcommit', value: metadata.promptCommitment },
     ],
     nonce: nonce + 1,
     gas: BigInt(1_000_000),
   });
 
-  return {
-    ensName,
-    txHashes: [createTxHash, recordsTxHash],
-  };
+  return { ensName, txHashes: [createTxHash, recordsTxHash] };
+}
+
+export async function getAgentTextRecord(slug: string, key: string): Promise<string | null> {
+  const ensName = getAgentEnsName(slug);
+  return getPublicClient().getEnsText({ name: normalize(ensName), key });
+}
+
+function getAgentEnsName(slug: string): string {
+  return `${slug}.${PARENT_DOMAIN}`;
+}
+
+export async function getAgentAddress(slug: string): Promise<string | null> {
+  const ensName = getAgentEnsName(slug);
+  return getPublicClient().getEnsAddress({ name: normalize(ensName) });
+}
+
+export async function getAgentPricing(slug: string): Promise<{ price: string | null; agentAddress: string | null }> {
+  const [price, agentAddress] = await Promise.all([getAgentTextRecord(slug, 'price'), getAgentAddress(slug)]);
+  return { price, agentAddress };
 }
 
 export async function updateEnsTextRecord(ensName: string, key: string, value: string): Promise<Hash> {

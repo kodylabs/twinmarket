@@ -4,7 +4,7 @@ import { createAgentBookVerifier } from '@worldcoin/agentkit';
 import { z } from 'zod';
 import { generateAgentWallet, getAgentBookNonce, submitAgentBookRegistration } from '@/lib/agentkit';
 import { agentSkillTable, agentTable, asc, count, desc, eq, sum, userTable } from '@/lib/db';
-import { getEnsRecords, registerEnsName, updateEnsTextRecord } from '@/lib/ens';
+import { getEnsRecords, registerAgent as registerEnsName, updateEnsTextRecord } from '@/lib/ens';
 import { computePromptCommitment } from '@/lib/zk';
 import { protectedProcedure, publicProcedure, router } from '@/trpc/init';
 
@@ -228,6 +228,7 @@ export const agentsRouter = router({
       // 1. ENS registration + AgentBook relay in parallel (independent operations)
       const [ensResult, relayResult] = await Promise.all([
         registerEnsName(slug, input.walletAddress as `0x${string}`, {
+          price: '$0.01',
           description: input.bio,
           url: `https://twinmarket.app/twins/${slug}`,
           avatar: '',

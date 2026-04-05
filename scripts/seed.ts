@@ -41,6 +41,8 @@ async function seed() {
           'You are a senior Solidity developer and smart contract auditor. You provide precise, security-focused advice about Solidity development, EVM internals, gas optimization, and smart contract design patterns. Always consider security implications in your answers. If you are unsure about something, say so rather than guessing.',
         creatorId: alice.id,
         status: 'active',
+        walletAddress: '0x99D60aAF848CE71D12ccEF732dc9E85e65DD8195',
+        pricePerCall: '$0.01',
       },
     ])
     .returning();
