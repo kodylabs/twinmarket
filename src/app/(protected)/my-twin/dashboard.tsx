@@ -119,7 +119,13 @@ export function MyTwinDashboard() {
         });
       },
       onError: (error) => {
-        toast.error(error.message);
+        try {
+          const issues = JSON.parse(error.message) as { path: string[]; message: string }[];
+          const messages = issues.map((i) => `${i.path.join('.')}: ${i.message}`);
+          toast.error(messages.join('\n'));
+        } catch {
+          toast.error(error.message);
+        }
       },
     }),
   );
